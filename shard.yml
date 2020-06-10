@@ -1,0 +1,22 @@
+name: analogger
+version: 0.1.0
+
+authors:
+  - Kirk Haines <wyhaines@gmail.com>
+
+targets:
+  analogger:
+    main: src/analogger.cr
+
+crystal: 0.34.0
+
+license: MIT
+
+dependencies:
+  msgpack:
+    github: crystal-community/msgpack-crystal
+
+development_dependencies:
+  ameba:
+    github: crystal-ameba/ameba
+    version: ~> 0.12.0

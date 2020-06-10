@@ -1,0 +1,10 @@
+version: 1.0
+shards:
+  ameba:
+    github: crystal-ameba/ameba
+    version: 0.12.1
+
+  msgpack:
+    github: crystal-community/msgpack-crystal
+    version: 0.17.1
+
