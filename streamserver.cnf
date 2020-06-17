@@ -1,0 +1,31 @@
+---
+port: 47990
+host: 127.0.0.1
+default_log: log/default.log
+daemonize: false
+syncinterval: 1
+pidfile: log/analogger.pid
+groups:
+  - id: "test-group-1"
+    key: "ee2df8e807e99f6d5ee48b00b4558b069d3af0e25a9c3fdf741952857b2bd84f"
+    logs:
+      - service:
+        - a
+        - b
+        type: file
+        logfile: log/a.log
+        cull: true
+        levels: a,b,c,d
+      - service: c
+        logfile: log/c.log
+        cull: true
+  - id: "test-group-2"
+    key: "798c733ba086c606fa8a925ab69bebf1cc44ee11a19ac81eaa4689774a6b6b04"
+    logs:
+      - service: d
+        logfile: log/d.log
+        cull: false
+      - service: stderr
+        logfile: STDERR
+        cull: true
+        default: true
