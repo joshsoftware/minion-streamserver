@@ -1,7 +1,7 @@
 require "./core/*"
 require "./timer"
 require "./destination_registry"
-require "./destination/file"
+require "./destination/*"
 require "socket"
 require "./protocol"
 
@@ -304,6 +304,10 @@ module Minion
 
         obj = Minion::StreamServer::DestinationRegistry.get(type)
         obj.open(destination, options)
+      rescue e : Exception
+        STDERR.puts e
+        STDERR.puts e.backtrace.join("\n")
+        raise e
       end
 
       ##########

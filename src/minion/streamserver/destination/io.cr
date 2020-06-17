@@ -15,7 +15,7 @@ module Minion
 
         getter handle
         getter channel
-        getter io
+        getter io : IO
 
         def initialize(@group : Group, io_name : String, @options : Array(String))
           @channel = Channel(Frame).new

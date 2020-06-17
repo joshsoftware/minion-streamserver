@@ -14,7 +14,7 @@ module Minion
       def parse_options
         empty_config = <<-EYAML
       ---
-      logs: []
+      groups: []
       EYAML
         config = Config.from_yaml(empty_config)
         # Config file to read
