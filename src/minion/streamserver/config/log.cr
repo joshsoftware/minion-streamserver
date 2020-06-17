@@ -14,8 +14,8 @@ module Minion
         @[YAML::Field(key: "service")]
         property service : String | Array(String) = "default"
 
-        @[YAML::Field(key: "logfile")]
-        property logfile : String
+        @[YAML::Field(key: "destination")]
+        property destination : String
 
         @[YAML::Field(key: "cull")]
         property cull : Bool = true

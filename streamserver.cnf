@@ -13,19 +13,27 @@ groups:
         - a
         - b
         type: file
-        logfile: log/a.log
+        destination: log/a.log
         cull: true
         levels: a,b,c,d
       - service: c
-        logfile: log/c.log
+        destination: log/c.log
         cull: true
+    telemetry:
+      - destination: STDERR
+    responses:
+      - destination: STDERR
   - id: "test-group-2"
     key: "798c733ba086c606fa8a925ab69bebf1cc44ee11a19ac81eaa4689774a6b6b04"
     logs:
       - service: d
-        logfile: log/d.log
+        destination: log/d.log
         cull: false
       - service: stderr
-        logfile: STDERR
+        destination: STDERR
         cull: true
         default: true
+    telemetry:
+      - destination: STDERR
+    responses:
+      - destination: STDERR

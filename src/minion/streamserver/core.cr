@@ -243,8 +243,8 @@ module Minion
             service_array.each do |loglog|
               new_log = Log.new(
                 service: loglog,
-                raw_destination: log.logfile,
-                destination: log_destination(log.logfile, log.type, log.options),
+                raw_destination: log.destination,
+                destination: destination(log.destination, log.type, log.options),
                 cull: log.cull,
                 type: log.type,
                 options: log.options)
@@ -254,8 +254,8 @@ module Minion
             service_string = log.service.to_s
             new_log = Log.new(
               service: service_string,
-              raw_destination: log.logfile,
-              destination: log_destination(log.logfile, log.type, log.options),
+              raw_destination: log.destination,
+              destination: destination(log.destination, log.type, log.options),
               cull: log.cull,
               type: log.type,
               options: log.options)
@@ -272,7 +272,8 @@ module Minion
         group.telemetry.each do |telemetry|
           group_telemetry << Telemetry.new(
             type: telemetry.type,
-            options: telemetry.options
+            options: telemetry.options,
+            destination: destination(telemetry.destination, telemetry.type, telemetry.options)
           )
         end
 
@@ -285,18 +286,19 @@ module Minion
         group.responses.each do |response|
           group_responses << Response.new(
             type: response.type,
-            options: response.options
+            options: response.options,
+            destination: destination(response.destination, response.type, response.options)
           )
         end
 
         group_responses
       end
 
-      def log_destination(destination : Minion::StreamServer::Destination)
-        logfile.reopen() if logfile.respond_to? :reopen
+      def destination(destination : Minion::StreamServer::Destination)
+        destination.reopen() if destination.respond_to? :reopen
       end
 
-      def log_destination(destination : String, type : String? = "file", options : Array(String)? = ["ab"])
+      def destination(destination : String, type : String? = "file", options : Array(String)? = ["ab"])
         type ||= "file"
         type = type.to_s.downcase
 
@@ -308,10 +310,10 @@ module Minion
       def set_config_defaults
         @config.host ||= "127.0.0.1"
 
-        @config.interval = @config.interval.nil? ? 1 : @config.interval.to_i
+        #@config.interval = @config.interval.nil? ? 1 : @config.interval.to_i
         @config.syncinterval = @config.syncinterval.nil? ? 60 : @config.syncinterval.to_i
         Minion::StreamServer::Core.default_log = @config.default_log.to_s.blank? ? "STDOUT" : @config.default_log.to_s
-        Minion::StreamServer::Core.default_log_destination = log_destination(destination: "STDERR", type: "Io")
+        Minion::StreamServer::Core.default_log_destination = destination(destination: "STDERR", type: "Io")
       end
 
       ##########

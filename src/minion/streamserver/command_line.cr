@@ -40,15 +40,6 @@ module Minion
           opts.on("-h", "--host [HOST]", "The host to bind the connection to.") do |host|
             config.host = host
           end
-          opts.on("-r", "--secret [KEY]", "The secret key that authenticates a control session.") do |secret|
-            config.secret = secret
-          end
-          opts.on("-k", "--key [KEY]", "The secret key that authenticates a valid client session.") do |secret|
-            config.key = secret
-          end
-          opts.on("-i", "--interval [INTERVAL]", "The interval between queue writes.  Defaults to 1 second.") do |interval|
-            config.interval = interval
-          end
           opts.on("-s", "--syncinterval [INTERVAL]", "The interval between queue syncs.  Defaults to 60 seconds.") do |interval|
             config.syncinterval = interval
           end

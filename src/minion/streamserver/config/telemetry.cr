@@ -6,6 +6,9 @@ module Minion
         include YAML::Serializable
         include YAML::Serializable::Unmapped
 
+        @[YAML::Field(key: "destination")]
+        property destination : String
+
         @[YAML::Field(key: "type")]
         property type : String = "file"
 

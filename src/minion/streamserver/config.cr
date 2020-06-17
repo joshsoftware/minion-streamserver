@@ -34,15 +34,6 @@ module Minion
       @[YAML::Field(key: "host")]
       property host : String = "127.0.0.1"
 
-      @[YAML::Field(key: "secret")]
-      property secret : String | Nil
-
-      @[YAML::Field(key: "key")]
-      property key : String | Nil
-
-      @[YAML::Field(key: "interval")]
-      property interval : String | Int32 = 1
-
       @[YAML::Field(key: "syncinterval")]
       property syncinterval : String | Int32 = 60
 
