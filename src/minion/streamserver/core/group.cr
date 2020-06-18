@@ -19,18 +19,18 @@ module Minion
         end
 
         def to_s
-          log_map = logs.map {|l| "    #{l}"}.join("\n")
+          log_map = logs.map { |l| "    #{l}" }.join("\n")
           "id: #{@id}\nkey: #{@key}\nlogs:\n#{log_map}"
         end
 
         def ==(other)
           @id == other.id &&
-          @key == other.key
+            @key == other.key
         end
 
         def authenticated?(id, key)
           @id == id &&
-          @key == key
+            @key == key
         end
       end
     end

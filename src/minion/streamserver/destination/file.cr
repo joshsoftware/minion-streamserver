@@ -25,13 +25,13 @@ module Minion
           @file_handle = ::File.open(@destination, mode)
           @handle = spawn do
             begin
-            while frame = @channel.receive
-              @file_handle.write "#{frame.uuid.to_s}\t#{frame.data[1..-1].join("\t")}".to_slice
-              @file_handle.write NEWLINE unless frame.data[2][-1] == '\n'
-            end
-          rescue e : Exception
-            STDERR.puts e
-            STDERR.puts e.backtrace.join("\n")
+              while frame = @channel.receive
+                @file_handle.write "#{frame.uuid.to_s}\t#{frame.data[1..-1].join("\t")}".to_slice
+                @file_handle.write NEWLINE unless frame.data[2][-1] == '\n'
+              end
+            rescue e : Exception
+              STDERR.puts e
+              STDERR.puts e.backtrace.join("\n")
             end
           end
         end

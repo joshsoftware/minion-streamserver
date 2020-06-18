@@ -23,7 +23,7 @@ module Minion
 
         def ==(other)
           @type == other.type &&
-          @options == other.options
+            @options == other.options
         end
       end
     end

@@ -14,7 +14,6 @@ end
 module Minion
   class StreamServer
     class Core
-
       property config : Config
       property invocation_arguments : ExecArguments
       property key : String
@@ -41,15 +40,9 @@ module Minion
         @key = ""
         @config = command_line.config
         @invocation_arguments = ExecArguments.new(command: File.expand_path(PROGRAM_NAME), args: ARGV)
-        @groups = Hash(String, Group).new 
-        @cull_tracker = Hash(
-          String, Hash(
-            String, Array(String|UInt32)
-          )
-        ).new {|h,k| h[k] = Hash(
-          String, Array(String|UInt32)).new {|h, k| h[k] = ["",0] of String|UInt32}
-        }
-        @queue = Hash(String, Channel(Frame)).new {|h,k| h[k] = Channel(Frame).new}
+        @groups = Hash(String, Group).new
+        @cull_tracker = Hash(String, Hash(String, Array(String | UInt32))).new { |h, k| h[k] = Hash(String, Array(String | UInt32)).new { |h, k| h[k] = ["", 0] of String | UInt32 } }
+        @queue = Hash(String, Channel(Frame)).new { |h, k| h[k] = Channel(Frame).new }
         @handlers = Hash(String, Fiber).new
         @rcount = 0
         @wcount = 0
@@ -130,7 +123,7 @@ module Minion
                 data: [
                   frame.data[0],
                   frame.data[1],
-                  "Previous message repeated #{cull_tracker[service][1]} times."
+                  "Previous message repeated #{cull_tracker[service][1]} times.",
                 ])
               log.destination.not_nil!.channel.send(new_frame)
               cull_tracker[service][1] = 0_u32
@@ -310,7 +303,7 @@ module Minion
       end
 
       def setup_destination(destination : Minion::StreamServer::Destination)
-        destination.reopen() if destination.respond_to? :reopen
+        destination.reopen if destination.respond_to? :reopen
       end
 
       def setup_destination(destination : String, type : String? = "file", options : Array(String)? = ["ab"])
@@ -329,7 +322,7 @@ module Minion
       def set_config_defaults
         @config.host ||= "127.0.0.1"
 
-        #@config.interval = @config.interval.nil? ? 1 : @config.interval.to_i
+        # @config.interval = @config.interval.nil? ? 1 : @config.interval.to_i
         @config.syncinterval = @config.syncinterval.nil? ? 60 : @config.syncinterval.to_i
         Minion::StreamServer::Core.default_log = @config.default_log.to_s.blank? ? "STDOUT" : @config.default_log.to_s
         Minion::StreamServer::Core.default_log_destination = setup_destination(destination: "STDERR", type: "Io")
@@ -370,7 +363,6 @@ module Minion
           next unless (log = @logs[service])
 
           q.each do |m|
-
             any += 1
           end
         end
@@ -389,33 +381,33 @@ module Minion
       end
 
       def fsync_or_flush(dest)
-#        if !dest.closed?
-#          if dest.responds_to?(:fsync)
-#            dest.fsync
-#          elsif dest.responds_to?(:flush)
-#            dest.flush
-#          end
-#        end
+        #        if !dest.closed?
+        #          if dest.responds_to?(:fsync)
+        #            dest.fsync
+        #          elsif dest.responds_to?(:flush)
+        #            dest.flush
+        #          end
+        #        end
       end
 
       def cleanup
-#        @logs.each do |_service, l|
-#          if !(dest = l.destination).nil?
-#            fsync_or_flush(dest)
-#            dest.close unless dest.closed? || [STDERR, STDOUT].includes?(dest)
-#          end
-#        end
+        #        @logs.each do |_service, l|
+        #          if !(dest = l.destination).nil?
+        #            fsync_or_flush(dest)
+        #            dest.close unless dest.closed? || [STDERR, STDOUT].includes?(dest)
+        #          end
+        #        end
       end
 
       def cleanup_and_reopen
-#        @logs.each do |_service, l|
-#          if !(dest = l.destination).nil?
-#            fsync_or_flush(dest)
-#            if dest.responds_to?(:reopen)
-#              dest.reopen(dest) if ![STDERR, STDOUT].includes?(dest)
-#            end
-#          end
-#        end
+        #        @logs.each do |_service, l|
+        #          if !(dest = l.destination).nil?
+        #            fsync_or_flush(dest)
+        #            if dest.responds_to?(:reopen)
+        #              dest.reopen(dest) if ![STDERR, STDOUT].includes?(dest)
+        #            end
+        #          end
+        #        end
       end
     end
   end
