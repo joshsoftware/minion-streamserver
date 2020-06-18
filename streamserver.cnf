@@ -21,19 +21,24 @@ groups:
         cull: true
     telemetry:
       - destination: STDERR
+        type: io
     responses:
       - destination: STDERR
+        type: io
   - id: "test-group-2"
     key: "798c733ba086c606fa8a925ab69bebf1cc44ee11a19ac81eaa4689774a6b6b04"
     logs:
       - service: d
-        destination: log/d.log
+        destination: /dev/null
         cull: false
       - service: stderr
         destination: STDERR
+        type: io
         cull: true
         default: true
     telemetry:
       - destination: STDERR
+        type: io
     responses:
       - destination: STDERR
+        type: io

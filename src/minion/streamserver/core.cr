@@ -44,10 +44,10 @@ module Minion
         @groups = Hash(String, Group).new 
         @cull_tracker = Hash(
           String, Hash(
-            String, StaticArray(String|UInt32, 2)
+            String, Array(String|UInt32)
           )
         ).new {|h,k| h[k] = Hash(
-          String, StaticArray(String|UInt32,2)).new {|h, k| h[k] = StaticArray(String|UInt32, 2).new(0.to_u32)}
+          String, Array(String|UInt32)).new {|h, k| h[k] = ["",0] of String|UInt32}
         }
         @queue = Hash(String, Channel(Frame)).new {|h,k| h[k] = Channel(Frame).new}
         @handlers = Hash(String, Fiber).new
@@ -132,12 +132,13 @@ module Minion
                   frame.data[1],
                   "Previous message repeated #{cull_tracker[service][1]} times."
                 ])
-              log.destination.not_nil!.channel.send(new_frame) if log
-              cull_tracker[service][1] = 0
-              cull_tracker[service][0] = "\x00\x00"
+              log.destination.not_nil!.channel.send(new_frame)
+              cull_tracker[service][1] = 0_u32
+              cull_tracker[service][0] = frame.data[2]
+              log.destination.not_nil!.channel.send(frame)
             else
-              cull_tracker[service][1] = frame.data[2]
-              log.destination.not_nil!.channel.send(frame) if log
+              cull_tracker[service][0] = frame.data[2]
+              log.destination.not_nil!.channel.send(frame)
             end
           else
             log.destination.not_nil!.channel.send(frame) if log
@@ -169,16 +170,18 @@ module Minion
         id = frame.data[0]
         group = @groups[id]?
         # This assumes that there are few commands that an agent can send to the streamserver.
-        case group && frame.data[1]
-        when "authenticate-agent"
-          if group.not_nil!.key == frame.data[2]
-            reply = Frame.new(verb: :response, data: ["accepted"])
+        if group
+          case frame.data[1]
+          when "authenticate-agent"
+            if group.not_nil!.key == frame.data[2]
+              reply = Frame.new(verb: :response, data: ["accepted"])
+            else
+              reply = Frame.new(verb: :response, data: ["denied"])
+            end
+            protocol.send_data(reply)
           else
-            reply = Frame.new(verb: :response, data: ["denied"])
+            # NOP
           end
-          protocol.send_data(reply)
-        else
-          # NOP
         end
       end
 
@@ -244,7 +247,10 @@ module Minion
               new_log = Log.new(
                 service: loglog,
                 raw_destination: log.destination,
-                destination: destination(log.destination, log.type, log.options),
+                destination: setup_destination(
+                  destination: log.destination,
+                  type: log.type,
+                  options: log.options),
                 cull: log.cull,
                 type: log.type,
                 options: log.options)
@@ -255,7 +261,10 @@ module Minion
             new_log = Log.new(
               service: service_string,
               raw_destination: log.destination,
-              destination: destination(log.destination, log.type, log.options),
+              destination: setup_destination(
+                destination: log.destination,
+                type: log.type,
+                options: log.options),
               cull: log.cull,
               type: log.type,
               options: log.options)
@@ -273,7 +282,10 @@ module Minion
           group_telemetry << Telemetry.new(
             type: telemetry.type,
             options: telemetry.options,
-            destination: destination(telemetry.destination, telemetry.type, telemetry.options)
+            destination: setup_destination(
+              destination: telemetry.destination,
+              type: telemetry.type,
+              options: telemetry.options)
           )
         end
 
@@ -287,23 +299,26 @@ module Minion
           group_responses << Response.new(
             type: response.type,
             options: response.options,
-            destination: destination(response.destination, response.type, response.options)
+            destination: setup_destination(
+              destination: response.destination,
+              type: response.type,
+              options: response.options)
           )
         end
 
         group_responses
       end
 
-      def destination(destination : Minion::StreamServer::Destination)
+      def setup_destination(destination : Minion::StreamServer::Destination)
         destination.reopen() if destination.respond_to? :reopen
       end
 
-      def destination(destination : String, type : String? = "file", options : Array(String)? = ["ab"])
+      def setup_destination(destination : String, type : String? = "file", options : Array(String)? = ["ab"])
         type ||= "file"
         type = type.to_s.downcase
 
         obj = Minion::StreamServer::DestinationRegistry.get(type)
-        obj.open(destination, options)
+        obj.new(destination, options)
       rescue e : Exception
         STDERR.puts e
         STDERR.puts e.backtrace.join("\n")
@@ -317,7 +332,7 @@ module Minion
         #@config.interval = @config.interval.nil? ? 1 : @config.interval.to_i
         @config.syncinterval = @config.syncinterval.nil? ? 60 : @config.syncinterval.to_i
         Minion::StreamServer::Core.default_log = @config.default_log.to_s.blank? ? "STDOUT" : @config.default_log.to_s
-        Minion::StreamServer::Core.default_log_destination = destination(destination: "STDERR", type: "Io")
+        Minion::StreamServer::Core.default_log_destination = setup_destination(destination: "STDERR", type: "Io")
       end
 
       ##########

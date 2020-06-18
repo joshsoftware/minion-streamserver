@@ -16,13 +16,13 @@ module Minion
       end
 
       def daemonize # TODO: Is there a better alternative with Crystal?
-        if (child_pid = fork)
+        if (child_pid = Process.fork)
           puts "PID #{child_pid.pid}" unless @config.pidfile
           exit
         end
         setsid
 
-        exit if fork
+        exit if Process.fork
       rescue Exception
         puts "This Crystal(#{Crystal::DESCRIPTION}) does not appear to support fork/setsid; skipping"
       end

@@ -13,24 +13,31 @@ module Minion
         #
         # forward_missing_to(@file_handle)
 
-        getter handle
+        getter handle : Fiber
         getter channel
         getter io : IO
 
-        def initialize(@group : Group, io_name : String, @options : Array(String))
-          @channel = Channel(Frame).new
-          @io = case io_name
+        NEWLINE = "\n".to_slice
+        def initialize(destination : String, @options : Array(String))
+          @channel = Channel(Frame).new(1024)
+          @io = case destination
           when /stdout/i
             STDOUT
           when /stderr/i
             STDERR
           else
-            raise "Unknown IO: #{io_name}"
+            raise "Unknown IO: #{destination}"
           end
-
           @handle = spawn do
-            while frame = @channel.receive?
+            begin
+            loop do
+              frame = @channel.receive
               @io.write frame.data[2].to_slice
+              @io.write NEWLINE unless frame.data[2][-1] == '\n'
+            end
+          rescue e : Exception
+            STDERR.puts e
+            STDERR.puts e.backtrace.join("\n")
             end
           end
         end

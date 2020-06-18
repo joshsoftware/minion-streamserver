@@ -13,17 +13,25 @@ module Minion
         #
         # forward_missing_to(@file_handle)
 
-        getter handle
+        getter handle : Fiber
         getter channel
         getter file_handle : ::File
 
-        def initialize(@group : Group, @filename : String, @options : Array(String))
-          @channel = Channel(Frame).new
+        NEWLINE = "\n".to_slice
+
+        def initialize(@destination : String, @options : Array(String))
+          @channel = Channel(Frame).new(1024)
           mode = @options.as?(Array) ? options.first : "ab"
-          @file_handle = ::File.open(@filename, mode)
+          @file_handle = ::File.open(@destination, mode)
           @handle = spawn do
-            while frame = @channel.receive?
+            begin
+            while frame = @channel.receive
               @file_handle.write frame.data[2].to_slice
+              @file_handle.write NEWLINE unless frame.data[2][-1] == '\n'
+            end
+          rescue e : Exception
+            STDERR.puts e
+            STDERR.puts e.backtrace.join("\n")
             end
           end
         end
@@ -31,7 +39,7 @@ module Minion
         def reopen
           mode = @options.as?(Array) ? options.first : "ab"
           @file_handle.flush
-          @file_handle = @file_handle.reopen(@filename, mode)
+          @file_handle = @file_handle.reopen(@destination, mode)
         end
 
         def flush

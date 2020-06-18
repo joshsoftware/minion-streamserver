@@ -18,7 +18,7 @@ module Minion
     end
 
     def self.inflate(tup : Tuple(String, String, Array(String)))
-      {UUID.new(tup[1].to_s, tup[1], tup[2])}
+      {tup[0], UUID.new(tup[1].to_s), tup[2]}
     end
 
     property verb
@@ -35,6 +35,10 @@ module Minion
     def initialize(verb : String | Symbol, @uuid : String, @data : Array(String) = [] of String)
       @uuid = UUID.new(@uuid.as(String))
       @verb = symbol_to_string(verb)
+    end
+
+    def initialize(tuple : Tuple(String, String, Array(String)))
+      @verb, @uuid, @data = Frame.inflate(tuple)
     end
 
     def symbol_to_string(verb)
@@ -60,7 +64,7 @@ module Minion
     def to_msgpack
       return @packed.not_nil! if @packed
 
-      @packed = {@uuid.to_s, @verb, @data}.to_msgpack.not_nil!
+      @packed = {@verb, @uuid.to_s, @data}.to_msgpack.not_nil!
     end
   end
 end
