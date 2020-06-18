@@ -32,8 +32,8 @@ module Minion
             begin
             loop do
               frame = @channel.receive
-              @io.write frame.data[2].to_slice
-              @io.write NEWLINE unless frame.data[2][-1] == '\n'
+              @io.write "#{frame.uuid.to_s}\t#{frame.data[1..-1].join("\t")}".to_slice
+              @io.write NEWLINE unless frame.data.last[-1] == '\n'
             end
           rescue e : Exception
             STDERR.puts e

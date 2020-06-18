@@ -87,7 +87,6 @@ module Minion
       # The handler receives a frame, and then dispatches it according to the command variety.
       def handle(msg)
         frame = Frame.new(*msg)
-
         @logger.handle_frame(frame, self)
       end
     end
