@@ -41,7 +41,7 @@ module Minion
         @config = command_line.config
         @invocation_arguments = ExecArguments.new(command: File.expand_path(PROGRAM_NAME), args: ARGV)
         @groups = Hash(String, Group).new
-        @cull_tracker = Hash(String, Hash(String, Array(String | UInt32))).new { |h, k| h[k] = Hash(String, Array(String | UInt32)).new { |h, k| h[k] = ["", 0] of String | UInt32 } }
+        @cull_tracker = CullTracker.new
         @queue = Hash(String, Channel(Frame)).new { |h, k| h[k] = Channel(Frame).new }
         @handlers = Hash(String, Fiber).new
         @rcount = 0
@@ -110,27 +110,28 @@ module Minion
         id = frame.data[0]
         group = @groups[id]?
         if group
-          service = frame.data[1]
+          server = frame.data[1]
+          service = frame.data[2]
           log = group.logs[service]?
           if log && log.cull
             cull_tracker = @cull_tracker[id]
-            if cull_tracker[service][0] == frame.data[2]
-              cull_tracker[service][1] = cull_tracker[service][1].as(UInt32) + 1
-            elsif cull_tracker[service][1].as(UInt32) > 0
+            if cull_tracker[service][server].msg == frame.data[3]
+              cull_tracker[service][server].increment
+            elsif cull_tracker[service][server].positive?
               new_frame = Frame.new(
                 verb: frame.verb,
                 uuid: frame.uuid,
                 data: [
                   frame.data[0],
                   frame.data[1],
-                  "Previous message repeated #{cull_tracker[service][1]} times.",
+                  frame.data[2],
+                  "Previous message repeated #{cull_tracker[service][server].count} times.",
                 ])
               log.destination.not_nil!.channel.send(new_frame)
-              cull_tracker[service][1] = 0_u32
-              cull_tracker[service][0] = frame.data[2]
+              cull_tracker[service][server].reset(frame.data[3])
               log.destination.not_nil!.channel.send(frame)
             else
-              cull_tracker[service][0] = frame.data[2]
+              cull_tracker[service][server].msg = frame.data[3]
               log.destination.not_nil!.channel.send(frame)
             end
           else
@@ -164,9 +165,9 @@ module Minion
         group = @groups[id]?
         # This assumes that there are few commands that an agent can send to the streamserver.
         if group
-          case frame.data[1]
+          case frame.data[2]
           when "authenticate-agent"
-            if group.not_nil!.key == frame.data[2]
+            if group.not_nil!.key == frame.data[3]
               reply = Frame.new(verb: :response, data: ["accepted"])
             else
               reply = Frame.new(verb: :response, data: ["denied"])
