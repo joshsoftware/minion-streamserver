@@ -72,6 +72,8 @@ module Minion
             else
               Fiber.yield
             end
+          else
+            sleep 0.01
           end
         end
       end
@@ -88,6 +90,12 @@ module Minion
       def handle(msg)
         frame = Frame.new(*msg)
         @logger.handle_frame(frame, self)
+      end
+
+      def close
+        @client.flush
+      ensure
+        @client.close
       end
     end
   end

@@ -169,10 +169,12 @@ module Minion
           when "authenticate-agent"
             if group.not_nil!.key == frame.data[3]
               reply = Frame.new(verb: :response, data: ["accepted"])
+              protocol.send_data(reply)
             else
               reply = Frame.new(verb: :response, data: ["denied"])
+              protocol.send_data(reply)
+              protocol.close
             end
-            protocol.send_data(reply)
           else
             # NOP
           end
