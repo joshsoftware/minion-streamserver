@@ -4,6 +4,8 @@ require "./destination_registry"
 require "./destination/*"
 require "socket"
 require "./protocol"
+require "./connection_registry"
+require "./connection_manager"
 
 struct Number
   def positive?

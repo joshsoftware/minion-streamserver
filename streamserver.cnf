@@ -28,7 +28,12 @@ groups:
   - id: "test-group-2"
     key: "798c733ba086c606fa8a925ab69bebf1cc44ee11a19ac81eaa4689774a6b6b04"
     logs:
-      - service: d
+      - service: pg
+        cull: true
+        type: postgresql
+        destination: postgresql://postgres:Xander19981!@127.0.0.1/minion
+        options: []
+      - service: null
         destination: /dev/null
         cull: false
       - service: stderr
