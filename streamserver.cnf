@@ -50,8 +50,7 @@ groups:
         cull: true
         default: true
     telemetry:
-      - destination: STDERR
-        type: io
+      - label: telemetry 
     responses:
       - destination: STDERR
         type: io

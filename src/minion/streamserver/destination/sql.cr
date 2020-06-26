@@ -24,7 +24,7 @@ module Minion
               data:    [
                 frame.data[1],
                 frame.uuid.to_s,
-                frame.data[2],
+                frame.data[2..-1].size == 1 ? frame.data[2].to_json : frame.data[2..-1].to_json,
               ] of DB::Any,
             }
           else

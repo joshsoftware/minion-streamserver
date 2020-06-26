@@ -6,14 +6,17 @@ module Minion
         include YAML::Serializable
         include YAML::Serializable::Unmapped
 
-        @[YAML::Field(key: "destination")]
-        property destination : String
+        @[YAML::Field(key: "destination", emit_null: true, default: "STDERR")]
+        property destination : String?
 
-        @[YAML::Field(key: "type")]
-        property type : String = "file"
+        @[YAML::Field(key: "type", default: nil)]
+        property type : String?
 
-        @[YAML::Field(key: "options")]
-        property options : Array(String) = ["ab"]
+        @[YAML::Field(key: "options", default: ["ab"])]
+        property options : Array(String) = [] of String
+
+        @[YAML::Field(key: "label", emit_null: true, default: "telemetry")]
+        property label : String? = "telemetry"
       end
     end
   end

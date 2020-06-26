@@ -23,8 +23,8 @@ module Minion
         @[YAML::Field(key: "type", default: nil)]
         property type : String?
 
-        @[YAML::Field(key: "options", default: ["a+"])]
-        property options : Array(String) = ["a+"]
+        @[YAML::Field(key: "options", default: ["ab"])]
+        property options : Array(String) = ["ab"]
 
         @[YAML::Field(key: "default")]
         property default : Bool = false

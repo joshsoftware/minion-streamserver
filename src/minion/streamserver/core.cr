@@ -299,13 +299,29 @@ module Minion
         group_telemetry = [] of Telemetry
 
         group.telemetry.each do |telemetry|
+
+          destination_or_default =
+            telemetry.destination ||
+            group.service_defaults.not_nil!.destination ||
+            @config.service_defaults.not_nil!.destination ||
+            "default"
+          type_or_default =
+            telemetry.type ||
+            group.service_defaults.not_nil!.type ||
+            @config.service_defaults.not_nil!.type ||
+            "io"
+          options_or_default =
+            telemetry.options ||
+            group.service_defaults.not_nil!.options ||
+            @config.service_defaults.not_nil!.options ||
+            ["a+"]
           group_telemetry << Telemetry.new(
-            type: telemetry.type,
-            options: telemetry.options,
+            type: type_or_default,
+            options: options_or_default,
             destination: setup_destination(
-              destination: telemetry.destination,
-              type: telemetry.type,
-              options: telemetry.options)
+              destination: destination_or_default,
+              type: type_or_default,
+              options: options_or_default)
           )
         end
 
