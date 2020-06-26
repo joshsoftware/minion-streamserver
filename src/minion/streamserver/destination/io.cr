@@ -2,7 +2,6 @@ module Minion
   class StreamServer
     class Destination
       class Io < Minion::StreamServer::Destination
-
         getter handle : Fiber
         getter channel
         getter io : IO

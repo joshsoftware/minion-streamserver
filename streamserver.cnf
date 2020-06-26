@@ -31,7 +31,7 @@ groups:
       - service: pg
         cull: true
         type: postgresql
-        destination: postgresql://postgres:Xander19981!@127.0.0.1/minion
+        destination: postgresql://postgres@127.0.0.1/minion
         options: []
       - service: null
         destination: /dev/null
