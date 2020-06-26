@@ -113,13 +113,13 @@ module Minion
         group = @groups[id]?
         if group
           server = frame.data[1]
-          service = frame.data[2]
-          log = group.logs[service]?
-          if log && log.cull
+          service_label = frame.data[2]
+          service = group.logs[service_label]?
+          if service && service.cull
             cull_tracker = @cull_tracker[id]
-            if cull_tracker[service][server].msg == frame.data[3]
-              cull_tracker[service][server].increment
-            elsif cull_tracker[service][server].positive?
+            if cull_tracker[service_label][server].msg == frame.data[3]
+              cull_tracker[service_label][server].increment
+            elsif cull_tracker[service_label][server].positive?
               new_frame = Frame.new(
                 verb: frame.verb,
                 uuid: frame.uuid,
@@ -127,17 +127,17 @@ module Minion
                   frame.data[0],
                   frame.data[1],
                   frame.data[2],
-                  "Previous message repeated #{cull_tracker[service][server].count} times.",
+                  "Previous message repeated #{cull_tracker[service_label][server].count} times.",
                 ])
-              log.destination.not_nil!.channel.send(new_frame)
-              cull_tracker[service][server].reset(frame.data[3])
-              log.destination.not_nil!.channel.send(frame)
+              service.destination.not_nil!.channel.send(new_frame)
+              cull_tracker[service_label][server].reset(frame.data[3])
+              service.destination.not_nil!.channel.send(frame)
             else
-              cull_tracker[service][server].msg = frame.data[3]
-              log.destination.not_nil!.channel.send(frame)
+              cull_tracker[service_label][server].msg = frame.data[3]
+              service.destination.not_nil!.channel.send(frame)
             end
           else
-            log.destination.not_nil!.channel.send(frame) if log
+            service.destination.not_nil!.channel.send(frame) if service
           end
         end
       end
@@ -220,7 +220,7 @@ module Minion
       def populate_groups
         # Read through each Group stanza
         @config.groups.each do |group|
-          group_logs = populate_logs(group)
+          group_logs = populate_services(group)
           group_telemetry = populate_telemetry(group)
           group_responses = populate_responses(group)
 
@@ -233,44 +233,66 @@ module Minion
         end
       end
 
-      def populate_logs(group)
-        group_logs = {} of String => Log
+      def populate_services(group)
+        group_services = {} of String => Service
 
-        group.logs.each do |log|
-          next unless log.service
+        group.services.each do |service|
+          next unless service.service
 
-          service_array = log.service.as?(Array)
+          service_array = service.service.as?(Array)
+          cfg = @config
+          destination_or_default =
+            service.destination ||
+            group.service_defaults.not_nil!.destination ||
+            @config.service_defaults.not_nil!.destination ||
+            "default"
+          type_or_default =
+            service.type ||
+            group.service_defaults.not_nil!.type ||
+            @config.service_defaults.not_nil!.type ||
+            "io"
+          options_or_default =
+            service.options ||
+            group.service_defaults.not_nil!.options ||
+            @config.service_defaults.not_nil!.options ||
+            ["a+"]
           if service_array
-            service_array.each do |loglog|
-              new_log = Log.new(
-                service: loglog,
-                raw_destination: log.destination,
+            service_array.each do |label|
+              new_service = Service.new(
+                service: label,
+                raw_destination: destination_or_default,
                 destination: setup_destination(
-                  destination: log.destination,
-                  type: log.type,
-                  options: log.options),
-                cull: log.cull,
-                type: log.type,
-                options: log.options)
-              group_logs[new_log.service] = new_log
+                  destination: destination_or_default,
+                  type: type_or_default,
+                  options: options_or_default),
+                cull: service.cull ||
+                  group.service_defaults.not_nil!.cull ||
+                  @config.service_defaults.not_nil!.cull ||
+                  true,
+                type: type_or_default,
+                options: options_or_default)
+              group_services[new_service.service] = new_service
             end
           else
-            service_string = log.service.to_s
-            new_log = Log.new(
+            service_string = service.service.to_s
+            new_service = Service.new(
               service: service_string,
-              raw_destination: log.destination,
+              raw_destination: destination_or_default,
               destination: setup_destination(
-                destination: log.destination,
-                type: log.type,
-                options: log.options),
-              cull: log.cull,
-              type: log.type,
-              options: log.options)
-            group_logs[new_log.service] = new_log
+                destination: destination_or_default,
+                type: type_or_default,
+                options: options_or_default),
+                cull: service.cull ||
+                  group.service_defaults.not_nil!.cull ||
+                  @config.service_defaults.not_nil!.cull ||
+                  true,
+              type: type_or_default,
+              options: options_or_default)
+            group_services[new_service.service] = new_service
           end
         end
 
-        group_logs
+        group_services
       end
 
       def populate_telemetry(group)

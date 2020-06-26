@@ -38,13 +38,24 @@ module Minion
       property syncinterval : String | Int32 = 60
 
       @[YAML::Field(key: "default_log")]
-      property default_log : String | Nil
+      property default_log : String?
 
       @[YAML::Field(key: "daemonize")]
-      property daemonize : Bool | Nil
+      property daemonize : Bool?
 
       @[YAML::Field(key: "pidfile")]
-      property pidfile : String | Nil
+      property pidfile : String?
+
+      @[YAML::Field(
+        key: "service_defaults",
+        default: {
+          "service" => nil,
+          "destination" => nil,
+          "cull" => true,
+          "type" => nil,
+          "options" => ["a+"]
+          })]
+      property service_defaults : Minion::StreamServer::Config::Service?
 
       @[YAML::Field(key: "groups")]
       property groups : Array(Minion::StreamServer::Config::Group)

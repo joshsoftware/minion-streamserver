@@ -17,8 +17,18 @@ module Minion
         @[YAML::Field(key: "key")]
         property key : String = ""
 
-        @[YAML::Field(key: "logs")]
-        property logs : Array(Minion::StreamServer::Config::Log)
+        @[YAML::Field(
+          key: "service_defaults",
+          default: {
+            "service" => nil,
+            "destination" => nil,
+            "cull" => true,
+            "type" => nil,
+            "options" => nil})]
+        property service_defaults : Minion::StreamServer::Config::Service?
+
+        @[YAML::Field(key: "services")]
+        property services : Array(Minion::StreamServer::Config::Service)
 
         @[YAML::Field(key: "telemetry")]
         property telemetry : Array(Minion::StreamServer::Config::Telemetry)

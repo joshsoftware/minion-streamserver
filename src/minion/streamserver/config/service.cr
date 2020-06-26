@@ -2,7 +2,7 @@ module Minion
   class StreamServer
     class Config
       @[YAML::Serializable::Options(emit_nulls: true)]
-      struct Log
+      struct Service
         include YAML::Serializable
         include YAML::Serializable::Unmapped
 
@@ -11,20 +11,20 @@ module Minion
         # cull
         # type
         # options
-        @[YAML::Field(key: "service")]
+        @[YAML::Field(key: "service", default: "default")]
         property service : String | Array(String) = "default"
 
-        @[YAML::Field(key: "destination")]
-        property destination : String
+        @[YAML::Field(key: "destination", emit_null: true, default: "STDERR")]
+        property destination : String?
 
         @[YAML::Field(key: "cull")]
         property cull : Bool = true
 
-        @[YAML::Field(key: "type")]
-        property type : String = "file"
+        @[YAML::Field(key: "type", default: nil)]
+        property type : String?
 
-        @[YAML::Field(key: "options")]
-        property options : Array(String) = ["ab"]
+        @[YAML::Field(key: "options", default: ["a+"])]
+        property options : Array(String) = ["a+"]
 
         @[YAML::Field(key: "default")]
         property default : Bool = false

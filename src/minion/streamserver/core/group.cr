@@ -12,7 +12,7 @@ module Minion
         def initialize(
           @id : String,
           @key : String,
-          @logs : Hash(String, Log) = Hash(String, Log).new { |h, k| h[k] = Log.new(service: k) },
+          @logs : Hash(String, Service) = Hash(String, Service).new { |h, k| h[k] = Service.new(service: k) },
           @telemetry : Array(Telemetry) = [] of Telemetry,
           @responses : Array(Response) = [] of Response
         )

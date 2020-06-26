@@ -2,7 +2,7 @@ module Minion
   class StreamServer
     class Core
       # This struct stores the configuration information for a given logging destination.
-      struct Log
+      struct Service
         getter service : String
         getter raw_destination : String | Nil
         getter destination : Minion::StreamServer::Destination | Nil
