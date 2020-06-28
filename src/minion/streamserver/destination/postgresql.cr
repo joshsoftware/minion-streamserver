@@ -1,4 +1,5 @@
 require "pg"
+require "concurrent/channel"
 
 module Minion
   class StreamServer
@@ -16,8 +17,7 @@ module Minion
 
           @handle = spawn do
             begin
-              loop do
-                frame = @channel.receive
+              @channel.parallel.run do |frame|
                 ConnectionManager.open(destination).using_connection do |cnn|
                   table = tablename_from_verb(frame.verb)
                   insert_into(table: table, frame: frame, connection: cnn)
@@ -36,7 +36,7 @@ module Minion
             fields: Minion::StreamServer::Destination::SQL.fields_from_table(table: table, frame: frame),
             type: "pg"
           )
-          connection.exec( parts[:sql], args: parts[:data] )
+          connection.exec(parts[:sql], args: parts[:data])
         end
 
         def reopen

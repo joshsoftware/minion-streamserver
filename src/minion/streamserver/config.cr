@@ -49,12 +49,12 @@ module Minion
       @[YAML::Field(
         key: "service_defaults",
         default: {
-          "service" => nil,
+          "service"     => nil,
           "destination" => nil,
-          "cull" => true,
-          "type" => nil,
-          "options" => ["a+"]
-          })]
+          "cull"        => true,
+          "type"        => nil,
+          "options"     => ["a+"],
+        })]
       property service_defaults : Minion::StreamServer::Config::Service?
 
       @[YAML::Field(key: "groups")]

@@ -36,7 +36,7 @@ groups:
     service_defaults:
       service: default
       type: postgresql
-      destination: postgresql://postgres@127.0.0.1/minion
+      destination: postgresql://postgres:Xander19981!@127.0.0.1/minion
       options: []
     services:
       - service: pg

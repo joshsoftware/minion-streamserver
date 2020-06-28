@@ -14,7 +14,7 @@ module Minion
   # S - Set Key/Value
   struct Frame
     def self.from_msgpack(buffer : Slice(UInt8))
-      unpacked = Tuple(String, String, Array(String)).from_msgpack(buffer).as(Tuple(String, String, Array(String)))
+      Tuple(String, String, Array(String)).from_msgpack(buffer).as(Tuple(String, String, Array(String)))
     end
 
     def self.inflate(tup : Tuple(String, String, Array(String)))

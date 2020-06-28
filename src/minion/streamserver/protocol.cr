@@ -4,7 +4,7 @@ require "../frame"
 module Minion
   class StreamServer
     class Protocol
-      MAX_MESSAGE_LENGTH = 8192
+      MAX_MESSAGE_LENGTH = 65536
       REGEXP_COLON       = /:/
 
       @length : Int32?
@@ -32,6 +32,7 @@ module Minion
               @size_read = @client.read(@send_size_buffer)
               if @size_read < 2
                 Fiber.yield
+                sleep 0.01
               end
             elsif @size_read == 1
               byte = @client.read_byte
@@ -45,6 +46,7 @@ module Minion
               @read_message_body = true
               @read_message_size = false
               @size_read = 0
+              @message_size == 0
             end
           end
 

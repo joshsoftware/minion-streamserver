@@ -10,7 +10,7 @@ module Minion
       @@pool = {} of String => Minion::StreamServer::Connection
 
       def self.open(uri : String)
-        type, _junk = uri.split(/:/, 2)
+        type, _ = uri.split(/:/, 2)
         # We already have a connection.
         if @@pool.has_key?(uri)
           @@pool[uri]

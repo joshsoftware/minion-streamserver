@@ -17,6 +17,9 @@ dependencies:
     github: crystal-community/msgpack-crystal
   pg:
     github: will/crystal-pg
+  concurrent:
+    github: didactic-drunk/concurrent.cr
+    branch: master
 
 development_dependencies:
   ameba:

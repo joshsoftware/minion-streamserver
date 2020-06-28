@@ -20,11 +20,12 @@ module Minion
         @[YAML::Field(
           key: "service_defaults",
           default: {
-            "service" => nil,
+            "service"     => nil,
             "destination" => nil,
-            "cull" => true,
-            "type" => nil,
-            "options" => nil})]
+            "cull"        => true,
+            "type"        => nil,
+            "options"     => nil,
+          })]
         property service_defaults : Minion::StreamServer::Config::Service?
 
         @[YAML::Field(key: "services")]

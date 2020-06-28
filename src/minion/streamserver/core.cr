@@ -240,22 +240,22 @@ module Minion
           next unless service.service
 
           service_array = service.service.as?(Array)
-          cfg = @config
+
           destination_or_default =
             service.destination ||
-            group.service_defaults.not_nil!.destination ||
-            @config.service_defaults.not_nil!.destination ||
-            "default"
+              group.service_defaults.not_nil!.destination ||
+              @config.service_defaults.not_nil!.destination ||
+              "default"
           type_or_default =
             service.type ||
-            group.service_defaults.not_nil!.type ||
-            @config.service_defaults.not_nil!.type ||
-            "io"
+              group.service_defaults.not_nil!.type ||
+              @config.service_defaults.not_nil!.type ||
+              "io"
           options_or_default =
             service.options ||
-            group.service_defaults.not_nil!.options ||
-            @config.service_defaults.not_nil!.options ||
-            ["a+"]
+              group.service_defaults.not_nil!.options ||
+              @config.service_defaults.not_nil!.options ||
+              ["a+"]
           if service_array
             service_array.each do |label|
               new_service = Service.new(
@@ -266,9 +266,9 @@ module Minion
                   type: type_or_default,
                   options: options_or_default),
                 cull: service.cull ||
-                  group.service_defaults.not_nil!.cull ||
-                  @config.service_defaults.not_nil!.cull ||
-                  true,
+                      group.service_defaults.not_nil!.cull ||
+                      @config.service_defaults.not_nil!.cull ||
+                      true,
                 type: type_or_default,
                 options: options_or_default)
               group_services[new_service.service] = new_service
@@ -282,10 +282,10 @@ module Minion
                 destination: destination_or_default,
                 type: type_or_default,
                 options: options_or_default),
-                cull: service.cull ||
-                  group.service_defaults.not_nil!.cull ||
-                  @config.service_defaults.not_nil!.cull ||
-                  true,
+              cull: service.cull ||
+                    group.service_defaults.not_nil!.cull ||
+                    @config.service_defaults.not_nil!.cull ||
+                    true,
               type: type_or_default,
               options: options_or_default)
             group_services[new_service.service] = new_service
@@ -299,22 +299,21 @@ module Minion
         group_telemetry = [] of Telemetry
 
         group.telemetry.each do |telemetry|
-
           destination_or_default =
             telemetry.destination ||
-            group.service_defaults.not_nil!.destination ||
-            @config.service_defaults.not_nil!.destination ||
-            "default"
+              group.service_defaults.not_nil!.destination ||
+              @config.service_defaults.not_nil!.destination ||
+              "default"
           type_or_default =
             telemetry.type ||
-            group.service_defaults.not_nil!.type ||
-            @config.service_defaults.not_nil!.type ||
-            "io"
+              group.service_defaults.not_nil!.type ||
+              @config.service_defaults.not_nil!.type ||
+              "io"
           options_or_default =
             telemetry.options ||
-            group.service_defaults.not_nil!.options ||
-            @config.service_defaults.not_nil!.options ||
-            ["a+"]
+              group.service_defaults.not_nil!.options ||
+              @config.service_defaults.not_nil!.options ||
+              ["a+"]
           group_telemetry << Telemetry.new(
             type: type_or_default,
             options: options_or_default,
@@ -403,9 +402,9 @@ module Minion
       def any_in_queue?
         any = 0
         @queue.each do |service, q|
-          next unless (log = @logs[service])
+          next unless (@logs[service])
 
-          q.each do |m|
+          q.each do
             any += 1
           end
         end
