@@ -1,6 +1,5 @@
 /docs/
 /bin/
-/.shards/
 *.dwarf
 /log
-./streamserver
+streamserver
