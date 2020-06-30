@@ -2,4 +2,4 @@
 /bin/
 *.dwarf
 /log
-streamserver
+./streamserver
