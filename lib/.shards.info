@@ -1,0 +1,18 @@
+---
+version: 1.0
+shards:
+  msgpack:
+    git: https://github.com/crystal-community/msgpack-crystal.git
+    version: 0.17.1
+  db:
+    git: https://github.com/crystal-lang/crystal-db.git
+    version: 0.9.0
+  pg:
+    git: https://github.com/will/crystal-pg.git
+    version: 0.21.1
+  ameba:
+    git: https://github.com/crystal-ameba/ameba.git
+    version: 0.12.1
+  concurrent:
+    git: https://github.com/didactic-drunk/concurrent.cr.git
+    version: 0.1.0+git.commit.f3637ceb0ae67f7974fd0f36aee1f2d551bfe513
