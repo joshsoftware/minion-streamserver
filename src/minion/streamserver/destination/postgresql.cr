@@ -18,7 +18,7 @@ module Minion
           @handle = spawn do
             begin
               @channel.parallel.run do |frame|
-                ConnectionManager.open(destination).using_connection do |cnn|
+                ConnectionManager.open(@destination).using_connection do |cnn|
                   table = tablename_from_verb(frame.verb)
                   insert_into(table: table, frame: frame, connection: cnn)
                 end

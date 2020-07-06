@@ -57,6 +57,9 @@ module Minion
         })]
       property service_defaults : Minion::StreamServer::Config::Service?
 
+      @[YAML::Field(key: "command", emit_nulls: true)]
+      property command : Array(Minion::StreamServer::Config::Command)?
+
       @[YAML::Field(key: "groups")]
       property groups : Array(Minion::StreamServer::Config::Group)
     end

@@ -4,6 +4,8 @@ module Minion
   class StreamServer
     class Destination
       class SQL
+        DateFields = {"created_at", "updated_at"}
+
         def self.fields_from_table(table, frame)
           case table
           when "logs"
@@ -42,13 +44,13 @@ module Minion
 
         def self.insert_args(fields, type = "pg")
           sql = <<-ESQL
-            INSERT INTO #{fields[:table]} (#{columns(fields)}) VALUES (#{bind_variables(fields, type)})
+            INSERT INTO #{fields[:table]} (#{columns(fields)}) VALUES (#{bind_variables(fields, type)}, now(), now())
           ESQL
           {sql: sql, data: fields[:data]}
         end
 
         def self.columns(fields)
-          fields[:columns].join(", ")
+          (fields[:columns] + DateFields).join(", ")
         end
 
         def self.bind_variables(fields, type = "pg")

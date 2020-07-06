@@ -10,6 +10,8 @@ module Minion
       @length : Int32?
       @message_buffer : Slice(UInt8)
 
+      getter client : TCPSocket
+
       def initialize(@client : TCPSocket, @logger : Minion::StreamServer::Core)
         @length = nil
         @pos = 0

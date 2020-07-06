@@ -7,14 +7,14 @@ module Minion
         getter key
         getter logs
         getter telemetry
-        getter responses
+        getter command
 
         def initialize(
           @id : String,
           @key : String,
           @logs : Hash(String, Service) = Hash(String, Service).new { |h, k| h[k] = Service.new(service: k) },
           @telemetry : Array(Telemetry) = [] of Telemetry,
-          @responses : Array(Response) = [] of Response
+          @command : Array(Command)? = [] of Command
         )
         end
 

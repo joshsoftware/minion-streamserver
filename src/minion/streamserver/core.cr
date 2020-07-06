@@ -1,11 +1,13 @@
 require "./core/*"
 require "./timer"
 require "./destination_registry"
-require "./destination/*"
+# require "./destination/*"
 require "socket"
 require "./protocol"
 require "./connection_registry"
 require "./connection_manager"
+require "./command/processor_registry"
+require "./command/listener_registry"
 
 struct Number
   def positive?
@@ -48,6 +50,7 @@ module Minion
         @handlers = Hash(String, Fiber).new
         @rcount = 0
         @wcount = 0
+        @registered_agents = {} of String => Protocol
         @now = Time.local
       end
 
@@ -87,6 +90,9 @@ module Minion
         client.close rescue IO::Error
       end
 
+      # TODO: This handle* stuff should probably all live in the handler...
+      # aka the Protocol.
+      #
       # L -- log
       # C - Command
       # R - Response
@@ -146,8 +152,10 @@ module Minion
         id = frame.data[0]
         group = @groups[id]?
         if group
-          group.responses.each do |response|
-            response.destination.not_nil!.channel.send(frame)
+          unless group.command.nil?
+            group.command.not_nil!.each do |command|
+              command.processor.not_nil!.response_queue.send(frame)
+            end
           end
         end
       end
@@ -169,11 +177,12 @@ module Minion
         if group
           case frame.data[2]
           when "authenticate-agent"
-            if group.not_nil!.key == frame.data[3]
-              reply = Frame.new(verb: :response, data: ["accepted"])
+            if group.key.to_s == frame.data[3]
+              reply = Frame.new(verb: :response, data: [frame.uuid.to_s, "accepted"])
+              register_agent(group, frame, protocol)
               protocol.send_data(reply)
             else
-              reply = Frame.new(verb: :response, data: ["denied"])
+              reply = Frame.new(verb: :response, data: [frame.uuid.to_s, "denied"])
               protocol.send_data(reply)
               protocol.close
             end
@@ -183,10 +192,72 @@ module Minion
         end
       end
 
+      def register_agent(group, frame, protocol)
+        register_agent_connection(frame.data[1].to_s, protocol)
+        id = frame.data[0]
+        group = @groups[id]?
+        agent_address = protocol.client.remote_address.address
+        server_id = frame.data[1]
+        unless group.nil?
+          destination = group.not_nil!.command.not_nil!.first.destination
+          if rec = server_record(destination, frame.data[1], protocol)
+            ConnectionManager.open(destination.not_nil!).using_connection do |cnn|
+              if rec[1].includes? agent_address
+                sql = <<-ESQL
+                UPDATE servers
+                SET updated_at = now()
+                WHERE id = $1
+                ESQL
+                cnn.exec(sql, server_id)
+              else
+                sql = <<-ESQL
+                UPDATE servers
+                SET addresses = addresses || CAST($1 as inet), updated_at = now()
+                WHERE id = $2
+                ESQL
+                cnn.exec(sql, agent_address, server_id)
+              end
+            end
+          else
+            ConnectionManager.open(destination.not_nil!).using_connection do |cnn|
+              sql = <<-ESQL
+              INSERT INTO servers (id, addresses, created_at, updated_at)
+              VALUES ($1, Array[CAST($2 as inet)], now(), now())
+              ESQL
+              cnn.exec(sql, server_id, agent_address)
+            end
+          end
+        end
+      end
+
+      def server_record(destination, server_id, protocol)
+        sql = <<-ESQL
+        SELECT id, addresses
+        FROM servers
+        WHERE id = $1
+        ESQL
+        rec = nil
+        ConnectionManager.open(destination.not_nil!).using_connection do |cnn|
+          begin
+            rec = cnn.query_one(sql, server_id, as: {String, Array(String)})
+          rescue DB::NoResultsError
+            rec = nil
+          end
+        end
+
+        rec
+      end
+
+      def register_agent_connection(agent_id, handler)
+        @registered_agents[agent_id] = handler
+      end
+
       ##########
       def setup_signal_traps
         safe_trap(signal_list: EXIT_SIGNALS) { handle_pending_and_exit }
-        safe_trap(signal_list: RELOAD_SIGNALS) { cleanup_and_reopen }
+        safe_trap(signal_list: RELOAD_SIGNALS) {
+          # TODO: make HUP work again; cleanup_and_reopen
+        }
         safe_trap(signal_list: RESTART_SIGNALS) do
           purge_queues
           Process.exec(
@@ -222,14 +293,15 @@ module Minion
         @config.groups.each do |group|
           group_logs = populate_services(group)
           group_telemetry = populate_telemetry(group)
-          group_responses = populate_responses(group)
+          # group_responses = populate_responses(group)
+          group_command = populate_command(group)
 
           @groups[group.id] = Group.new(
             id: group.id,
             key: group.key,
             logs: group_logs,
             telemetry: group_telemetry,
-            responses: group_responses)
+            command: group_command)
         end
       end
 
@@ -344,6 +416,56 @@ module Minion
         group_responses
       end
 
+      def populate_command(group)
+        group_command = [] of Command
+
+        default_command = @config.try(&.command).try(&.first)
+
+        unless group.command.nil?
+          group.command.not_nil!.each do |command|
+            processor = setup_processor(
+              type: command.processor || default_command.try(&.processor).not_nil!,
+              agent_registry: @registered_agents,
+              destination: command.destination || default_command.try(&.destination).not_nil!
+            )
+            listener = setup_listener(
+              type: command.listener || default_command.try(&.listener).not_nil!,
+              channel: command.channel || default_command.try(&.channel).not_nil!,
+              destination: command.destination || default_command.try(&.destination).not_nil!,
+              processor: processor
+            )
+            group_command << Command.new(
+              listener: listener,
+              processor: processor,
+              destination: command.destination || default_command.try(&.destination).not_nil!,
+              source: command.source || default_command.try(&.source).not_nil!,
+              channel: command.channel || default_command.try(&.channel).not_nil!
+            )
+          end
+        else
+          unless default_command.nil?
+            processor = setup_processor(
+              type: default_command.try(&.processor).not_nil!,
+              agent_registry: @registered_agents,
+              destination: default_command.try(&.destination).not_nil!
+            )
+            listener = setup_listener(
+              type: default_command.try(&.listener).not_nil!,
+              channel: default_command.try(&.channel).not_nil!,
+              destination: default_command.try(&.destination).not_nil!,
+              processor: processor
+            )
+            group_command << Command.new(
+              listener: listener,
+              processor: processor,
+              destination: default_command.try(&.destination),
+              source: default_command.try(&.source),
+              channel: default_command.try(&.channel)
+            )
+          end
+        end
+      end
+
       def setup_destination(destination : Minion::StreamServer::Destination)
         destination.reopen if destination.respond_to? :reopen
       end
@@ -358,6 +480,40 @@ module Minion
         STDERR.puts e
         STDERR.puts e.backtrace.join("\n")
         raise e
+      end
+
+      def setup_processor(
+        type : String,
+        agent_registry : Hash(String, Protocol),
+        destination : String?
+      )
+        type = type.to_s.downcase
+
+        obj = Minion::StreamServer::Command::ProcessorRegistry.get(type)
+        obj.new(
+          destination: destination,
+          agent_registry: agent_registry
+        )
+      rescue ex
+        STDERR.puts ex
+        STDERR.puts ex.backtrace.join("\n")
+        raise ex
+      end
+
+      def setup_listener(
+        type : String,
+        channel : String,
+        destination : String?,
+        processor : Minion::StreamServer::Command::Processor
+      )
+        type = type.to_s.downcase
+
+        obj = Minion::StreamServer::Command::ListenerRegistry.get(type)
+        obj.new(
+          destination: destination,
+          channel: channel,
+          processor: processor
+        )
       end
 
       ##########
@@ -391,9 +547,6 @@ module Minion
           group.telemetry.each do |telemetry|
             telemetry.destination.not_nil!.flush rescue Exception
           end
-          group.responses.each do |response|
-            response.destination.not_nil!.flush rescue Exception
-          end
         end
       end
 
@@ -413,43 +566,12 @@ module Minion
 
       def purge_queues
         flush_queue
-        cleanup
       end
 
       def handle_pending_and_exit
         STDOUT.puts "Caught termination signal. Exiting..." # TODO: Add better signal handling notifcations
         purge_queues
         exit
-      end
-
-      def fsync_or_flush(dest)
-        #        if !dest.closed?
-        #          if dest.responds_to?(:fsync)
-        #            dest.fsync
-        #          elsif dest.responds_to?(:flush)
-        #            dest.flush
-        #          end
-        #        end
-      end
-
-      def cleanup
-        #        @logs.each do |_service, l|
-        #          if !(dest = l.destination).nil?
-        #            fsync_or_flush(dest)
-        #            dest.close unless dest.closed? || [STDERR, STDOUT].includes?(dest)
-        #          end
-        #        end
-      end
-
-      def cleanup_and_reopen
-        #        @logs.each do |_service, l|
-        #          if !(dest = l.destination).nil?
-        #            fsync_or_flush(dest)
-        #            if dest.responds_to?(:reopen)
-        #              dest.reopen(dest) if ![STDERR, STDOUT].includes?(dest)
-        #            end
-        #          end
-        #        end
       end
     end
   end

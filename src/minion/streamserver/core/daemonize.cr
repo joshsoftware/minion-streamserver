@@ -23,6 +23,8 @@ module Minion
         # setsid
 
         # exit if Process.fork
+
+
       rescue Exception
         puts "This Crystal(#{Crystal::DESCRIPTION}) does not appear to support fork/setsid; skipping"
       end

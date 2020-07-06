@@ -9,10 +9,20 @@ host: 0.0.0.0
 default_log: log/default.log
 daemonize: false
 syncinterval: 1
-pidfile: log/analogger.pid
+pidfile: log/streamserver.pid
+command:
+  - listener: postgresql
+    destination: postgresql://postgres:Xander19981!@127.0.0.1/minion
+    channel: agent_commands
+    processor: postgresql
 groups:
   - id: "test-group-1"
     key: "ee2df8e807e99f6d5ee48b00b4558b069d3af0e25a9c3fdf741952857b2bd84f"
+    command:
+      - listener: postgresql
+        destination: postgresql://postgres:Xander19981!@127.0.0.1/minion
+        channel: agent_commands
+        processor: postgresql
     services:
       - service:
         - a

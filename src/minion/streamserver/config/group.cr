@@ -34,8 +34,8 @@ module Minion
         @[YAML::Field(key: "telemetry")]
         property telemetry : Array(Minion::StreamServer::Config::Telemetry)
 
-        @[YAML::Field(key: "responses")]
-        property responses : Array(Minion::StreamServer::Config::Response)
+        @[YAML::Field(key: "command", emit_nulls: true)]
+        property command : Array(Minion::StreamServer::Config::Command)?
       end
     end
   end

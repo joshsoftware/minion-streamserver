@@ -19,3 +19,5 @@ module Minion
     end
   end
 end
+
+require "./destination/*"
