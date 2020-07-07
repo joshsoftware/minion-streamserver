@@ -222,7 +222,7 @@ module Minion
             ConnectionManager.open(destination.not_nil!).using_connection do |cnn|
               sql = <<-ESQL
               INSERT INTO servers (id, addresses, created_at, updated_at)
-              VALUES ($1, Array[CAST($2 as inet)], now(), now())
+              VALUES ($1, Array[$2], now(), now())
               ESQL
               cnn.exec(sql, server_id, agent_address)
             end
