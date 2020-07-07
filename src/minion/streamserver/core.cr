@@ -212,7 +212,7 @@ module Minion
               else
                 sql = <<-ESQL
                 UPDATE servers
-                SET addresses = addresses || CAST($1 as inet), updated_at = now()
+                SET addresses = addresses || $1, updated_at = now()
                 WHERE id = $2
                 ESQL
                 cnn.exec(sql, agent_address, server_id)
