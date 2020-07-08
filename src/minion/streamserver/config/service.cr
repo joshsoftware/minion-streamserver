@@ -14,7 +14,7 @@ module Minion
         @[YAML::Field(key: "service", default: "default")]
         property service : String | Array(String) = "default"
 
-        @[YAML::Field(key: "destination", emit_null: true, default: "STDERR")]
+        @[YAML::Field(key: "destination", converter: String::EnvConverter, emit_null: true, default: "STDERR")]
         property destination : String?
 
         @[YAML::Field(key: "cull")]

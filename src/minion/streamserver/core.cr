@@ -74,6 +74,10 @@ module Minion
         end
       end
 
+      def string_from_string_or_array(val)
+        val.is_a?(Array) ? val.as(Array).join : val.as(String)
+      end
+
       def handle(client)
         # Or this way?
         #     client.sync = false if client.responds_to?(:sync=)
@@ -123,23 +127,23 @@ module Minion
           service = group.logs[service_label]?
           if service && service.cull
             cull_tracker = @cull_tracker[id]
-            if cull_tracker[service_label][server].msg == frame.data[3]
+            if cull_tracker[service_label][server].msg == string_from_string_or_array(frame.data[3])
               cull_tracker[service_label][server].increment
             elsif cull_tracker[service_label][server].positive?
               new_frame = Frame.new(
                 verb: frame.verb,
                 uuid: frame.uuid,
                 data: [
-                  frame.data[0],
-                  frame.data[1],
-                  frame.data[2],
-                  "Previous message repeated #{cull_tracker[service_label][server].count} times.",
+                  frame.data[0].as(String),
+                  frame.data[1].as(String),
+                  frame.data[2].as(String),
+                  ["Previous message repeated #{cull_tracker[service_label][server].count} times."],
                 ])
               service.destination.not_nil!.channel.send(new_frame)
-              cull_tracker[service_label][server].reset(frame.data[3])
+              cull_tracker[service_label][server].reset(string_from_string_or_array(frame.data[3]))
               service.destination.not_nil!.channel.send(frame)
             else
-              cull_tracker[service_label][server].msg = frame.data[3]
+              cull_tracker[service_label][server].msg = string_from_string_or_array(frame.data[3])
               service.destination.not_nil!.channel.send(frame)
             end
           else
@@ -177,7 +181,7 @@ module Minion
         if group
           case frame.data[2]
           when "authenticate-agent"
-            if group.key.to_s == frame.data[3]
+            if group.key.to_s == string_from_string_or_array(frame.data[3])
               reply = Frame.new(verb: :response, data: [frame.uuid.to_s, "accepted"])
               register_agent(group, frame, protocol)
               protocol.send_data(reply)

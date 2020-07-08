@@ -6,6 +6,11 @@ module Minion
       class SQL
         DateFields = {"created_at", "updated_at"}
 
+        # TODO: put this method on some class where everything can find it.
+        def self.string_from_string_or_array(val) : String
+          val.is_a?(Array) ? val.as(Array).join : val.as(String)
+        end
+
         def self.fields_from_table(table, frame)
           case table
           when "logs"
@@ -13,10 +18,10 @@ module Minion
               table:   table,
               columns: {"server_id", "uuid", "service", "msg"},
               data:    [
-                frame.data[1],
-                frame.uuid.to_s,
-                frame.data[2],
-                frame.data[3],
+                 frame.data[1].as(String),
+                 frame.uuid.to_s,
+                 frame.data[2].as(String),
+                 string_from_string_or_array(frame.data[3]),
               ] of DB::Any,
             }
           when "telemetries"
@@ -24,9 +29,9 @@ module Minion
               table:   table,
               columns: {"server_id", "uuid", "data"},
               data:    [
-                frame.data[1],
+                frame.data[1].as(String),
                 frame.uuid.to_s,
-                frame.data[2..-1].size == 1 ? frame.data[2].to_json : frame.data[2..-1].to_json,
+                frame.data[2..-1].to_json,
               ] of DB::Any,
             }
           else
@@ -34,9 +39,9 @@ module Minion
               table:   "unassigned_data",
               columns: {"server_id", "uuid", "data"},
               data:    [
-                frame.data[1],
+                frame.data[1].as(String),
                 frame.uuid.to_s,
-                frame.data[2..-1].to_json,
+                frame.data[2].to_json,
               ] of DB::Any,
             }
           end

@@ -67,7 +67,7 @@ module Minion
             end
 
             if @message_bytes_read >= @message_size
-              msg = Tuple(String, String, Array(String)).from_msgpack(@message_buffer).as(Tuple(String, String, Array(String)))
+              msg = Tuple(String, String, PayloadType).from_msgpack(@message_buffer).as(Tuple(String, String, PayloadType))
               handle msg
               @read_message_body = false
               @read_message_size = true

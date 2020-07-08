@@ -37,13 +37,13 @@ module Minion
       @[YAML::Field(key: "syncinterval")]
       property syncinterval : String | Int32 = 60
 
-      @[YAML::Field(key: "default_log")]
+      @[YAML::Field(key: "default_log", converter: String::EnvConverter)]
       property default_log : String?
 
       @[YAML::Field(key: "daemonize")]
       property daemonize : Bool?
 
-      @[YAML::Field(key: "pidfile")]
+      @[YAML::Field(key: "pidfile", converter: String::EnvConverter)]
       property pidfile : String?
 
       @[YAML::Field(

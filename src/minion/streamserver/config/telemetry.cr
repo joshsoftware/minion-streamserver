@@ -6,7 +6,7 @@ module Minion
         include YAML::Serializable
         include YAML::Serializable::Unmapped
 
-        @[YAML::Field(key: "destination", emit_null: true, default: "STDERR")]
+        @[YAML::Field(key: "destination", converter: String::EnvConverter, emit_null: true, default: "STDERR")]
         property destination : String?
 
         @[YAML::Field(key: "type", default: nil)]

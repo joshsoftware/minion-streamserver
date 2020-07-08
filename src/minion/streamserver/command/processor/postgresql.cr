@@ -19,6 +19,10 @@ module Minion
             initiate_command_response
           end
 
+          def string_from_string_or_array(val)
+            val.is_a?(Array) ? val.as(Array).join : val.as(String)
+          end
+
           def initiate_command_processing
             @processing_queue.parallel.run do |dispatch_params|
               next unless @agent_registry.has_key?(dispatch_params[0])
@@ -45,6 +49,15 @@ module Minion
             end
           end
 
+          # TODO: Refactor this so that if a response is received for a command that has already
+          # gotten a response, that new response is just appended to the original. This becomes
+          # potentially complicated when one factors in the hashing of responses in order to
+          # deduplcate them.
+          #
+          # I think that if responses are streaming back, they will have to diverge into separate
+          # response records for each server because it's not readily possible to know whether a
+          # chunk is a _different_ response from one server, or just a new chunk that needs to be
+          # appended.
           def initiate_command_response
             @response_queue.parallel.run do |frame|
               ConnectionManager.open(@destination.not_nil!).using_connection do |cnn|
@@ -52,12 +65,13 @@ module Minion
 
                 sql = <<-ESQL
                 INSERT INTO command_responses
-                  (response, hash, created_at, updated_at)
+                  (stdout, stderr, hash, created_at, updated_at)
                 VALUES
                   (
                     $1,
+                    $2,
                     encode(
-                      digest(CAST($2 as TEXT), 'sha256'),
+                      digest(CAST(($3 || $4) as TEXT), 'sha256'),
                       'hex'
                     ),
                     now(),
@@ -67,11 +81,14 @@ module Minion
                   DO UPDATE SET updated_at = now()
                 RETURNING id
                 ESQL
-                response_data = frame.data[3..-1]
+                stdout = [string_from_string_or_array(frame.data[3])]
+                stderr = [string_from_string_or_array(frame.data[4])]
                 response_id = cnn.query_one(
                   sql,
-                  response_data,
-                  response_data,
+                  stdout,
+                  stderr,
+                  stdout,
+                  stderr,
                   as: {String}
                 )
 
