@@ -1,19 +1,6 @@
 require "uuid"
+require "./monkeys/time"
 require "random/isaac"
-
-# For no good reason that I can discern, Time doesn't expose the internal seconds/nanoseconds representation.
-# There are protected methods to get it, but we want it, so let's get it.
-struct Time
-  @[AlwaysInline]
-  def internal_seconds
-    @seconds
-  end
-
-  @[AlwaysInline]
-  def internal_nanoseconds
-    @nanoseconds
-  end
-end
 
 module Minion
   # This struct wraps up a UUID that encodes a timestamp measured as seconds
@@ -63,11 +50,15 @@ module Minion
       @bytes = uuid.tr("-", "").hexbytes
     end
 
-    def initialize(seconds : Int64, nanoseconds : Int32, identifier : Slice(UInt8) | String | Nil = nil)
-      _initialize(seconds, nanoseconds, identifier)
+    def initialize(uuid : UUID)
+      @bytes = uuid.to_s.tr("-", "").hexbytes
     end
 
-    def _initialize(seconds : Int64, nanoseconds : Int32, identifier : Slice(UInt8) | String | Nil)
+    def initialize(seconds : Int64, nanoseconds : Int32, identifier : Slice(UInt8) | String | Nil = nil)
+      initialize_impl(seconds, nanoseconds, identifier)
+    end
+
+    def initialize_impl(seconds : Int64, nanoseconds : Int32, identifier : Slice(UInt8) | String | Nil)
       id = if identifier.is_a?(String)
              buf = Slice(UInt8).new(6)
              number_of_bytes = identifier.size < 6 ? identifier.size : 6
@@ -82,12 +73,12 @@ module Minion
     end
 
     def initialize(timestamp : Time, identifier : Slice(UInt8) | String | Nil = nil)
-      _initialize(timestamp.internal_seconds, timestamp.internal_nanoseconds, identifier)
+      initialize_impl(timestamp.internal_seconds, timestamp.internal_nanoseconds, identifier)
     end
 
     def initialize(identifier : Slice(UInt8) | String | Nil = nil)
       t = Time.local
-      _initialize(t.internal_seconds, t.internal_nanoseconds, identifier)
+      initialize_impl(t.internal_seconds, t.internal_nanoseconds, identifier)
     end
 
     def seconds_and_nanoseconds : Tuple(Int64, Int32)

@@ -18,10 +18,10 @@ module Minion
               table:   table,
               columns: {"server_id", "uuid", "service", "msg"},
               data:    [
-                 frame.data[1].as(String),
-                 frame.uuid.to_s,
-                 frame.data[2].as(String),
-                 string_from_string_or_array(frame.data[3]),
+                frame.data[1].as(String),
+                frame.uuid.to_s,
+                frame.data[2].as(String),
+                string_from_string_or_array(frame.data[3]),
               ] of DB::Any,
             }
           when "telemetries"

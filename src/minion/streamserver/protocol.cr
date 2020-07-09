@@ -1,5 +1,4 @@
 require "msgpack"
-require "../frame"
 
 module Minion
   class StreamServer

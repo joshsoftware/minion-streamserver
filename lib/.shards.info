@@ -16,3 +16,6 @@ shards:
   concurrent:
     git: https://github.com/didactic-drunk/concurrent.cr.git
     version: 0.1.0+git.commit.f3637ceb0ae67f7974fd0f36aee1f2d551bfe513
+  minion-common:
+    git: https://github.com/joshsoftware/minion-common.git
+    version: 0.1.0+git.commit.546139131651c1f69e4ae91f9ab514cf34a9eaf7
