@@ -20,6 +20,8 @@ dependencies:
   concurrent:
     github: didactic-drunk/concurrent.cr
     branch: master
+  minion-common:
+    github: joshsoftware/minion-common
 
 development_dependencies:
   ameba:

@@ -1,5 +1,4 @@
 require "./core/*"
-require "./timer"
 require "./destination_registry"
 # require "./destination/*"
 require "socket"
@@ -532,12 +531,8 @@ module Minion
 
       ##########
       def create_periodic_timers
-        @clock_update_timer = Minion::StreamServer::Timer.new(periodic: true) { @now = Time.local }
-        # @write_queue_timer = Minion::StreamServer::Timer.new(
-        #   interval: @config.interval.to_i,
-        #   periodic: true
-        # ) { write_queue }
-        @flush_queue_timer = Minion::StreamServer::Timer.new(
+        @clock_update_timer = Minion::Timer.new(periodic: true) { @now = Time.local }
+        @flush_queue_timer = Minion::Timer.new(
           interval: @config.syncinterval.to_i,
           periodic: true
         ) { flush_queue }
