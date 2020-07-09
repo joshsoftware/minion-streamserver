@@ -12,7 +12,7 @@ syncinterval: 1
 pidfile: log/streamserver.pid
 command:
   - listener: postgresql
-    destination: postgresql://postgres:ENV["DEST_PASSWD"]@127.0.0.1/minion
+    destination: postgresql://jah@localhost:5432/minion_api_development
     channel: agent_commands
     processor: postgresql
 groups:
@@ -20,7 +20,7 @@ groups:
     key: "ee2df8e807e99f6d5ee48b00b4558b069d3af0e25a9c3fdf741952857b2bd84f"
     command:
       - listener: postgresql
-        destination: postgresql://postgres:ENV["DEST_PASSWD"]@127.0.0.1/minion
+        destination: postgresql://jah@localhost:5432/minion_api_development
         channel: agent_commands
         processor: postgresql
     services:
@@ -46,7 +46,7 @@ groups:
     service_defaults:
       service: default
       type: postgresql
-      destination: postgresql://postgres:ENV["DEST_PASSWD"]@127.0.0.1/minion
+      destination: postgresql://jah@localhost:5432/minion_api_development
       options: []
     services:
       - service: pg
