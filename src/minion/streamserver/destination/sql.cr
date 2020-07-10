@@ -4,12 +4,9 @@ module Minion
   class StreamServer
     class Destination
       class SQL
-        DateFields = {"created_at", "updated_at"}
+        extend Minion::Util
 
-        # TODO: put this method on some class where everything can find it.
-        def self.string_from_string_or_array(val) : String
-          val.is_a?(Array) ? val.as(Array).join : val.as(String)
-        end
+        DateFields = {"created_at", "updated_at"}
 
         def self.fields_from_table(table, frame)
           case table

@@ -29,16 +29,16 @@ module Minion
 
               server_id, command_id, server_command_id = dispatch_params
               ConnectionManager.open(@destination.not_nil!).using_connection do |cnn|
-                argv = cnn.query_one(
-                  "select argv from #{table} where id = $1",
+                argv, type = cnn.query_one(
+                  "select argv, type from #{table} where id = $1",
                   command_id,
-                  as: Array(String)
+                  as: {Array(String), String}
                 )
 
                 msg = Frame.new(
                   verb: :command,
                   uuid: server_command_id,
-                  data: ["external"] + argv
+                  data: [type] + argv
                 )
                 @agent_registry[server_id].send_data(msg)
                 cnn.exec(

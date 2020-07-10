@@ -1,5 +1,5 @@
 require "./streamserver/version"
-require "./streamserver/exec"
 require "minion-common"
+require "./streamserver/exec"
 
 Minion::StreamServer::Exec.run
