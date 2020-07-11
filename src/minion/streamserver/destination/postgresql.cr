@@ -12,23 +12,41 @@ module Minion
         getter destination
 
         def initialize(@destination : String, @options : Array(String))
-          @channel = Channel(Frame).new(1024)
+          @channel = Channel(Frame).new(1024 * 1024)
           opts = parse_options
 
-          @handle = spawn do
-            begin
-              @channel.parallel.run do |frame|
-                ConnectionManager.open(@destination).using_connection do |cnn|
-                  table = tablename_from_verb(frame.verb)
-                  insert_into(table: table, frame: frame, connection: cnn)
-                end
-              end
-            rescue e : Exception
-              STDERR.puts "ERROR in Postgresql Driver:"
-              STDERR.puts e
-              STDERR.puts e.backtrace.join("\n")
+          queues = Hash(String, Deque(Frame)).new {|h,k| h[k] = Deque(Frame).new}
+
+          @handle = spawn(name: "transfer to insert queue") do
+            while frame = @channel.receive?
+              queues[tablename_from_verb(frame.verb)] << frame
             end
           end
+
+          @handle = spawn(name: "process insert queue") do
+            loop do
+            sleep 1
+            queues.each do |table, queue|
+              columns = nil
+              while queue.size > 0
+                batch = [] of Array(Bool | Float32 | Float64 | Int32 | Int64 | Slice(UInt8) | String | Time | Nil)
+                batch_count = 0
+                while queue.size > 0 && batch_count < 10
+                  fft = Minion::StreamServer::Destination::SQL.fields_from_table(table: table, frame: queue.shift)
+                  if columns.nil?
+                    columns = fft[:columns]
+                  end
+                  batch << fft[:data]
+                  batch_count += 1
+                end
+        
+                ConnectionManager.open(@destination).using_connection do |cnn|
+                  batch_insert_into(table: table, columns: columns, data: batch, connection: cnn) if batch.size > 0
+                end
+              end
+            end
+          end
+        end
         end
 
         def insert_into(table, frame, connection)
@@ -37,6 +55,13 @@ module Minion
             type: "pg"
           )
           connection.exec(parts[:sql], args: parts[:data])
+        end
+
+        def batch_insert_into(table, columns, data, connection)
+          sql = Minion::StreamServer::Destination::SQL.insert_batch_args(table, columns, data)
+          flat_data = [] of Array(String)|Bool | Float32 | Float64 | Int32 | Int64 | Slice(UInt8) | String | Time | Nil
+          data.each { |d| d.each {|i| flat_data << i} }
+          connection.exec(sql, args: flat_data)
         end
 
         def reopen

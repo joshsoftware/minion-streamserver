@@ -51,6 +51,19 @@ module Minion
           {sql: sql, data: fields[:data]}
         end
 
+        def self.insert_batch_args(table, column_names, data, type = "pg")
+          sql = <<-ESQL
+            INSERT INTO #{table} (#{(column_names.not_nil! + DateFields).join(", ")}) VALUES
+
+          ESQL
+          m = column_names.not_nil!.size
+          n = 1 - m
+
+          sql += data.map { n += m; "(#{(n..(n+m - 1)).map {|z| "$#{z}"}.join(", ")}, now(), now())"}.join(",\n")
+
+          sql
+        end
+
         def self.columns(fields)
           (fields[:columns] + DateFields).join(", ")
         end
