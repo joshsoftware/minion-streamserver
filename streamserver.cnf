@@ -50,9 +50,15 @@ groups:
       options: []
     services:
       - service: pg
+        options:
+          - batch_size: 2000
+          - inserts_per_transaction: 100
+          - channel_depth: 100000
+          - queue_process_wait: 0.1
       - service: auth
       - service: null
         destination: /dev/null
+        type: file
         cull: false
       - service: stderr
         destination: STDERR

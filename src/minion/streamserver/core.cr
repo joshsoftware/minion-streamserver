@@ -473,7 +473,7 @@ module Minion
         destination.reopen if destination.respond_to? :reopen
       end
 
-      def setup_destination(destination : String, type : String? = "file", options : Array(String)? = ["ab"])
+      def setup_destination(destination : String, type : String? = "file", options : Array(String)|Array(Hash(String,Bool | Float32 | Float64 | Int32 | Int64 | Slice(UInt8) | String | Time | Nil))? = ["ab"])
         type ||= "file"
         type = type.to_s.downcase
 

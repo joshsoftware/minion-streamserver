@@ -8,7 +8,7 @@ module Minion
 
         NEWLINE = "\n".to_slice
 
-        def initialize(destination : String, @options : Array(String))
+        def initialize(destination : String, @options : Array(String)|Array(Hash(String,Bool | Float32 | Float64 | Int32 | Int64 | Slice(UInt8) | String | Time | Nil)))
           @channel = Channel(Frame).new(1024)
           @io = case destination
                 when /stdout/i

@@ -8,38 +8,62 @@ module Minion
 
         DateFields = {"created_at", "updated_at"}
 
+        def self.fields_from_table(table, frame, data_only)
+            case table
+            when "logs"
+              {
+                  frame.data[1].as(String),
+                  frame.uuid.to_s,
+                  frame.data[2].as(String),
+                  string_from_string_or_array(frame.data[3]),
+              }
+            when "telemetries"
+              {
+                  frame.data[1].as(String),
+                  frame.uuid.to_s,
+                  frame.data[2..-1].to_json,
+              }
+            else
+              {
+                  frame.data[1].as(String),
+                  frame.uuid.to_s,
+                  frame.data[2].to_json,
+              }
+            end
+        end
+
         def self.fields_from_table(table, frame)
           case table
           when "logs"
             {
               table:   table,
               columns: {"server_id", "uuid", "service", "msg"},
-              data:    [
+              data:    {
                 frame.data[1].as(String),
                 frame.uuid.to_s,
                 frame.data[2].as(String),
                 string_from_string_or_array(frame.data[3]),
-              ] of DB::Any,
+               },
             }
           when "telemetries"
             {
               table:   table,
               columns: {"server_id", "uuid", "data"},
-              data:    [
+              data:    {
                 frame.data[1].as(String),
                 frame.uuid.to_s,
                 frame.data[2..-1].to_json,
-              ] of DB::Any,
+          },
             }
           else
             {
               table:   "unassigned_data",
               columns: {"server_id", "uuid", "data"},
-              data:    [
+              data:    {
                 frame.data[1].as(String),
                 frame.uuid.to_s,
                 frame.data[2].to_json,
-              ] of DB::Any,
+          },
             }
           end
         end
@@ -59,7 +83,7 @@ module Minion
           m = column_names.not_nil!.size
           n = 1 - m
 
-          sql += data.map { n += m; "(#{(n..(n+m - 1)).map {|z| "$#{z}"}.join(", ")}, now(), now())"}.join(",\n")
+          sql += (1..(data.size // m)).map { n += m; "(#{(n..(n + m - 1)).map { |z| "$#{z}" }.join(", ")}, now(), now())" }.join(",\n")
 
           sql
         end
