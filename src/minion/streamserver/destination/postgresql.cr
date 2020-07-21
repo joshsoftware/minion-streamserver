@@ -116,7 +116,12 @@ module Minion
 
         def batch_insert_into(table, columns, data, connection)
           sql = Minion::StreamServer::Destination::SQL.insert_batch_args(table, columns, data)
-          connection.exec(sql, args: data)
+          begin
+            connection.exec(sql, args: data)
+          rescue ex
+            # TODO: Recover
+            STDERR.puts "Error in Batch Insert Into: #{ex}"
+          end
         end
 
         def reopen

@@ -22,6 +22,8 @@ dependencies:
     branch: master
   minion-common:
     github: joshsoftware/minion-common
+  tablo:
+    github: hutou/tablo
 
 development_dependencies:
   ameba:

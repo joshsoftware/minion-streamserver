@@ -28,5 +28,5 @@ require "./minion/*"
 # These are collected utility methods.
 
 module Minion::Common
-  VERSION = "0.1.3"
+  VERSION = "0.1.4"
 end

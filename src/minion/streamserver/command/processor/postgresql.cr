@@ -108,7 +108,7 @@ module Minion
             DELETE FROM #{@source}
             WHERE command_id = (
               SELECT command_id
-              FROM #{source}
+              FROM #{@source}
               ORDER BY created_at
               FOR UPDATE SKIP LOCKED
               LIMIT 1
@@ -120,7 +120,11 @@ module Minion
               ConnectionManager.open(@destination.not_nil!).using_connection do |cnn|
                 cnn.transaction do |tx|
                   inner_cnn = tx.connection
-                  command_id = inner_cnn.query_one(sql, as: {String})
+                  command_id = nil
+                  inner_cnn.query_each(sql) do |rs|
+                    command_id = rs.read(String)
+                    break
+                  end
                 end
               end
             rescue DB::NoResultsError

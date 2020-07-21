@@ -18,4 +18,7 @@ shards:
     version: 0.1.0+git.commit.f3637ceb0ae67f7974fd0f36aee1f2d551bfe513
   minion-common:
     git: https://github.com/joshsoftware/minion-common.git
-    version: 0.1.0+git.commit.765a845df54bb67158cb51ea899c9faba8095f5d
+    version: 0.1.4+git.commit.6aa3737e5f89bcbe20ed277565fe3a12205b1f78
+  tablo:
+    git: https://github.com/hutou/tablo.git
+    version: 0.9.3

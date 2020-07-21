@@ -189,8 +189,29 @@ module Minion
               protocol.send_data(reply)
               protocol.close
             end
+          when "heartbeat"
+            record_heartbeat(group, frame)
+            reply = Frame.new(verb: :response, data: [frame.uuid.to_s, "recorded"])
+            protocol.send_data(reply)
           else
             # NOP
+          end
+        end
+      end
+
+      def record_heartbeat(group, frame)
+        id = frame.data[0]
+        group = @groups[id]?
+        server_id = frame.data[1]
+        unless group.nil?
+          destination = group.not_nil!.command.not_nil!.first.destination
+          ConnectionManager.open(destination.not_nil!).using_connection do |cnn|
+            sql = <<-ESQL
+            UPDATE servers
+            SET heartbeat_at = now()
+            where id = $1
+            ESQL
+            cnn.exec(sql, server_id)
           end
         end
       end
