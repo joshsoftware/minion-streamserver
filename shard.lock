@@ -12,6 +12,10 @@ shards:
     git: https://github.com/crystal-lang/crystal-db.git
     version: 0.9.0
 
+  debug:
+    git: https://github.com/Sija/debug.cr.git
+    version: 2.0.0
+
   minion-common:
     git: https://github.com/joshsoftware/minion-common.git
     version: 0.1.4+git.commit.6aa3737e5f89bcbe20ed277565fe3a12205b1f78

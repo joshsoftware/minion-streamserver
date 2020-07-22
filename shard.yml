@@ -24,6 +24,8 @@ dependencies:
     github: joshsoftware/minion-common
   tablo:
     github: hutou/tablo
+  debug:
+    github: Sija/debug.cr
 
 development_dependencies:
   ameba:

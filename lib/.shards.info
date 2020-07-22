@@ -22,3 +22,6 @@ shards:
   tablo:
     git: https://github.com/hutou/tablo.git
     version: 0.9.3
+  debug:
+    git: https://github.com/Sija/debug.cr.git
+    version: 2.0.0

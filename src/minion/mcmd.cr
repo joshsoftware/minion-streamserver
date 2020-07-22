@@ -2,6 +2,8 @@ require "option_parser"
 require "pg"
 require "colorize"
 require "tablo"
+require "minion-common"
+require "debug"
 
 module Minion
   class MCMD
@@ -133,9 +135,9 @@ module Minion
     end
 
     def parse_verb
-      if @config["command"] =~ /^\s*show\s/
+      if @config["command"] =~ /^\s*show\s/i
         return "show"
-      elsif @config["command"] =~ /\srun\s/
+      elsif @config["command"] =~ /\srun\s/i
         return "run"
       else
         ""
@@ -157,7 +159,7 @@ module Minion
     end
 
     def parse_remote_command
-      @config["command"] =~ /\s*run\s+(.*)$/
+      @config["command"] =~ /\s*run\s+(.*)$/i
       argv = $1.to_s.split
 
       command, type = get_type_and_command_from(argv[0])
@@ -167,7 +169,7 @@ module Minion
     end
 
     def get_type_and_command_from(data)
-      if data =~ /^\s*internal:/
+      if data =~ /^\s*internal:/i
         type, command = data.split(/:/,2)
       else
         type = "external"
@@ -179,73 +181,78 @@ module Minion
 
     def execute
       execute_show if show?
+
       if run?
         command_id, servers = execute_run
         if command_id && synchronous?
-          finish_notifications = Channel(String).new
-          finish_count = 0
-
-          servers.each do |server|
-            server_command = nil
-            @db.try do |db|
-              db.using_connection do |cnn|
-                begin
-                  sql = <<-ESQL
-                  SELECT id FROM servers_commands WHERE server_id = $1 AND command_id = $2
-                  ESQL
-                  server_command = cnn.query_one(sql, server, command_id, as: {String})
-                rescue ex
-                  STDERR.puts "Failure to get server command record for server_id=#{server} and command_id=#{command_id}.\n#{ex}"
-                end
-              end
-            end
-
-            if server_command
-              spawn do
-                start = Time.monotonic
-                sleep_time = 0.001
-                sleep_factor = 1.1
-                sleep_max = 0.5
-                still_waiting = true
-                while still_waiting && ((Time.monotonic - start).to_f < @config["timeout"].as(Float64))
-                  @db.try do |db|
-                    db.using_connection do |cnn|
-                      sql = <<-ESQL
-                      SELECT response_id FROM servers_commands where id = $1
-                      ESQL
-                      response = cnn.query_one(sql, server_command, as: {String?})
-
-                      if response
-                        sql = <<-ESQL
-                        SELECT stdout, stderr, hash, updated_at FROM command_responses WHERE id = $1
-                        ESQL
-                        stdout, stderr, hash, updated_at = cnn.query_one(sql, response, as: {Array(String), Array(String), String, Time})
-                        puts "#{server}[#{updated_at}]: #{stdout.join}" if !stdout.join.empty?
-                        puts "#{server}[#{updated_at}]: #{stderr.join}".colorize(:red) if !stderr.join.empty?
-                        still_waiting = false
-                      end
-                    end
-                  end
-
-                  sleep sleep_time
-                  if sleep_time < sleep_max
-                    sleep_time *= sleep_factor
-                    sleep_time = sleep_max if sleep_time > sleep_max
-                  end
-                end
-                finish_notifications.send(server)
-              end
-            end
-          end
-
-          start = Time.monotonic
-          while finish_count < servers.size
-            finish_notifications.receive
-            finish_count += 1
-          end
+          execute_run_wait(command_id, servers)
         else
           puts "Executing as command #{command_id} on #{servers.size} agents."
         end
+      end
+    end
+
+    def execute_run_wait(command_id, servers)
+      finish_notifications = Channel(String).new
+      finish_count = 0
+
+      servers.each do |server|
+        server_command = nil
+        @db.try do |db|
+          db.using_connection do |cnn|
+            begin
+              sql = <<-ESQL
+              SELECT id FROM servers_commands WHERE server_id = $1 AND command_id = $2
+              ESQL
+              server_command = cnn.query_one(sql, server, command_id, as: {String})
+            rescue ex
+              STDERR.puts "Failure to get server command record for server_id=#{server} and command_id=#{command_id}.\n#{ex}"
+            end
+          end
+        end
+
+        if server_command
+          spawn do
+            start = Time.monotonic
+            sleep_time = 0.001
+            sleep_factor = 1.1
+            sleep_max = 0.5
+            still_waiting = true
+            while still_waiting && ((Time.monotonic - start).to_f < @config["timeout"].as(Float64))
+              @db.try do |db|
+                db.using_connection do |cnn|
+                  sql = <<-ESQL
+                  SELECT response_id FROM servers_commands where id = $1
+                  ESQL
+                  response = cnn.query_one(sql, server_command, as: {String?})
+
+                  if response
+                    sql = <<-ESQL
+                    SELECT stdout, stderr, hash, updated_at FROM command_responses WHERE id = $1
+                    ESQL
+                    stdout, stderr, hash, updated_at = cnn.query_one(sql, response, as: {Array(String), Array(String), String, Time})
+                    puts "#{server}[#{updated_at}]:\n#{stdout.join}" if !stdout.join.empty?
+                    puts "#{server}[#{updated_at}]:\n#{stderr.join}".colorize(:red) if !stderr.join.empty?
+                    still_waiting = false
+                  end
+                end
+              end
+
+              sleep sleep_time
+              if sleep_time < sleep_max
+                sleep_time *= sleep_factor
+                sleep_time = sleep_max if sleep_time > sleep_max
+              end
+            end
+            finish_notifications.send(server)
+          end
+        end
+      end
+
+      start = Time.monotonic
+      while finish_count < servers.size
+        finish_notifications.receive
+        finish_count += 1
       end
     end
 
@@ -262,7 +269,7 @@ module Minion
     end
 
     def execute_show
-      case @subject
+      case @subject.downcase
       when "servers"
         execute_show_servers
       when "telemetry"
@@ -286,8 +293,10 @@ module Minion
             SELECT id, aliases, addresses, organization_id, created_at, heartbeat_at
             FROM servers
             WHERE id = $1
+            #{where_by_date("created_at")}
             ORDER BY heartbeat_at ASC, created_at ASC
             ESQL
+            debug!(sql)
             data << cnn.query_one(sql, server, as: {String, Array(String)?, Array(String)?, String?, Time?, Time?}) rescue {"",nil,nil,nil,nil,nil}
           end
         end
@@ -334,8 +343,10 @@ module Minion
             SELECT server_id, uuid, data, created_at
             FROM telemetries
             WHERE server_id = $1
+            #{where_by_date("created_at")}
             ORDER BY server_id ASC, created_at ASC 
             ESQL
+            debug!(sql)
             cnn.query_each(sql, server) do |rs|
               data << {rs.read(String), rs.read(String), rs.read(JSON::Any), rs.read(Time)}
             end
@@ -380,8 +391,10 @@ module Minion
             SELECT server_id, uuid, service, msg, created_at
             FROM logs
             WHERE server_id = $1
+            #{where_by_date("created_at")}
             ORDER BY server_id ASC, created_at ASC 
             ESQL
+            debug!(sql)
             cnn.query_each(sql, server) do |rs|
               data << {rs.read(String), rs.read(String), rs.read(String), rs.read(String), rs.read(Time)}
             end
@@ -428,8 +441,10 @@ module Minion
             SELECT servers_commands.server_id, commands.id, commands.argv, commands.type, servers_commands.dispatched_at, servers_commands.response_at
             FROM servers_commands, commands
             WHERE servers_commands.server_id = $1 AND servers_commands.command_id = commands.id
+            #{where_by_date("servers_commands.dispatched_at")}
             ORDER BY servers_commands.server_id ASC, commands.created_at ASC 
             ESQL
+            debug!(sql)
             cnn.query_each(sql, server) do |rs|
               data << {rs.read(String), rs.read(String), rs.read(Array(String)), rs.read(String), rs.read(Time?), rs.read(Time?)}
             end
@@ -477,11 +492,13 @@ module Minion
             sql = <<-ESQL
             SELECT servers_commands.server_id, commands.id, commands.argv, responses.stdout, responses.stderr, servers_commands.response_at
             FROM servers_commands, commands, command_responses as responses
-            WHERE servers_commands.server_id = $1 AND
-              servers_commands.command_id = commands.id AND
-              servers_commands.response_id = responses.id
+            WHERE servers_commands.server_id = $1
+              AND servers_commands.command_id = commands.id
+              AND servers_commands.response_id = responses.id
+              #{where_by_date("servers_commands.response_at")}
             ORDER BY servers_commands.server_id ASC, commands.created_at ASC 
             ESQL
+            debug!(sql)
             cnn.query_each(sql, server) do |rs|
               data << {rs.read(String), rs.read(String), rs.read(Array(String)), rs.read(Array(String)), rs.read(Array(String)), rs.read(Time?)}
             end
@@ -562,12 +579,14 @@ module Minion
     end
 
     def get_servers
-      servers = @args.map do |arg|
+      servers = @args.dup.unshift(["",""]).map do |arg|
         find_server_by(arg)
       end
 
       if servers.size > 1
-        servers[1..-1].reduce(servers[0]) {|a, v| a & v}
+        servers[1..-1].
+          reject(&.empty?).
+          reduce(servers[0]) {|a, v| a & v}
       else
         servers.flatten
       end
@@ -575,7 +594,9 @@ module Minion
 
     def find_server_by(arg)
       key, value = arg
-      sql = case key
+      results = [] of String
+
+      sql = case key.downcase
       when "server"
         "SELECT id FROM SERVERS WHERE id::text = $1 OR $1 = ANY(aliases) OR $1 = ANY(addresses) ORDER BY id"
       when "id"
@@ -586,20 +607,112 @@ module Minion
         "SELECT id FROM SERVERS WHERE $1 = ANY(addresses) ORDER BY id"
       when "tag"
         "SELECT server_id FROM SERVERS_TAGS WHERE server_id = $1 ORDER BY server_id"
+      when ""
+        "SELECT id from SERVERS ORDER BY id"
       end
 
-      results = [] of String
       if sql
         @db.try do |db|
           db.using_connection do |cnn|
-            cnn.query_each(sql, value) do |rs|
-              results << rs.read(String)
+            if key.empty?
+              cnn.query_each(sql) do |rs|
+                results << rs.read(String)
+              end
+            else
+              cnn.query_each(sql, value) do |rs|
+                results << rs.read(String)
+              end
             end
           end
         end
       end
 
       results
+    end
+
+    def where_by_date(field)
+      sql = [] of String
+      timestamp_args = @args.select do |arg|
+        arg[0] =~ /before|after|on/i
+      end
+      
+      timestamp_keys = timestamp_args.map(&.first).map(&.downcase)
+      before_count = timestamp_keys.select {|k| k == "before"}.size
+      after_count = timestamp_keys.select {|k| k == "after"}.size
+
+      if before_count == 1 && after_count == 1
+        sql << date_between(field, timestamp_args)
+        timestamp_args.each { |arg| sql << date_on(field, arg) }
+      else
+        timestamp_args.each do |arg|
+          sql << date_before_or_after(field, arg)
+          sql << date_on(field, arg)
+        end
+      end
+
+      sql.reject(&.empty?).join
+    end
+
+    def date_between(field, args)
+      before = nil
+      after = nil
+      args.each do |arg|
+        key, value = arg
+        if key == "before"
+          before = value
+        elsif key == "after"
+          after = value
+        end
+      end
+
+      before_cast, before_parsed_date = parse_and_cast_date_value(before)
+      after_cast, after_parsed_date = parse_and_cast_date_value(after)
+
+      if before_parsed_date && after_parsed_date
+        "AND #{field} BETWEEN '#{before_parsed_date}'::timestamp AND '#{after_parsed_date}'\n"
+      else
+        ""
+      end
+    end
+
+    def date_before_or_after(field, arg)
+      key, value = arg
+      key = key.downcase
+      cast, parsed_date = parse_and_cast_date_value(value)
+
+      if parsed_date && key == "before"
+        "AND #{field}#{cast} < '#{parsed_date}'\n"
+      elsif parsed_date && key == "after"
+        "AND #{field}#{cast} > '#{parsed_date}'\n"
+      else
+        ""
+      end
+    end
+
+    def date_on(field, arg)
+      key, value = arg
+      key = key.downcase
+      cast, parsed_date = parse_and_cast_date_value(value)
+
+      if parsed_date && key == "on"
+        "AND #{field}#{cast} = '#{parsed_date}'\n"
+      else
+        ""
+      end
+    end
+
+    def parse_and_cast_date_value(value)
+      parsed_date = Minion::ParseDate.parse(value)
+      return {"", nil} unless parsed_date
+
+      parsed_date = parsed_date.to_s("%Y-%m-%d %H:%M:%S")
+      cast = ""
+      if parsed_date =~ /00:00:00/
+        cast = "::date"
+        parsed_date = Minion::ParseDate.parse(value).not_nil!.to_s("%Y-%m-%d")
+      end
+
+      {cast, parsed_date}
     end
 
   end
