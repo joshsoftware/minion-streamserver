@@ -1,0 +1,18 @@
+language: crystal
+
+crystal:
+  - latest
+  - nightly
+
+jobs:
+  allow_failures:
+    - crystal: nightly
+
+install:
+  - shards install
+
+script:
+  - DEBUG=1 crystal spec
+  - crystal spec
+  - crystal tool format --check
+  - bin/ameba

@@ -8,11 +8,13 @@ module Minion
         getter logs
         getter telemetry
         getter command
+        getter default_log
 
         def initialize(
           @id : String,
           @key : String,
           @logs : Hash(String, Service) = Hash(String, Service).new { |h, k| h[k] = Service.new(service: k) },
+          @default_log : Minion::StreamServer::Core::Service | String = "",
           @telemetry : Array(Telemetry) = [] of Telemetry,
           @command : Array(Command)? = [] of Command
         )

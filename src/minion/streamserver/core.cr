@@ -123,7 +123,14 @@ module Minion
         if group
           server = frame.data[1]
           service_label = frame.data[2]
-          service = group.logs[service_label]?
+          service = if group.logs.has_key?(service_label)
+            group.logs[service_label]
+          elsif group.default_log.is_a?(Minion::StreamServer::Core::Service)
+            group.default_log.as(Minion::StreamServer::Core::Service)
+          else
+            nil
+          end
+
           if service && service.cull
             cull_tracker = @cull_tracker[id]
             if cull_tracker[service_label][server].msg == string_from_string_or_array(frame.data[3])
@@ -136,7 +143,7 @@ module Minion
                   frame.data[0].as(String),
                   frame.data[1].as(String),
                   frame.data[2].as(String),
-                  ["Previous message repeated #{cull_tracker[service_label][server].count} times."],
+                  "Previous message repeated #{cull_tracker[service_label][server].count} times.",
                 ])
               service.destination.not_nil!.channel.send(new_frame)
               cull_tracker[service_label][server].reset(string_from_string_or_array(frame.data[3]))
@@ -319,11 +326,12 @@ module Minion
           group_telemetry = populate_telemetry(group)
           # group_responses = populate_responses(group)
           group_command = populate_command(group)
-
+          default_log = group_logs.values.find(if_none: "default") {|service| service.default}
           @groups[group.id] = Group.new(
             id: group.id,
             key: group.key,
             logs: group_logs,
+            default_log: default_log,
             telemetry: group_telemetry,
             command: group_command)
         end
@@ -366,7 +374,8 @@ module Minion
                       @config.service_defaults.not_nil!.cull ||
                       true,
                 type: type_or_default,
-                options: options_or_default)
+                options: options_or_default,
+                default: service.default)
               group_services[new_service.service] = new_service
             end
           else
@@ -383,7 +392,8 @@ module Minion
                     @config.service_defaults.not_nil!.cull ||
                     true,
               type: type_or_default,
-              options: options_or_default)
+              options: options_or_default,
+              default: service.default)
             group_services[new_service.service] = new_service
           end
         end

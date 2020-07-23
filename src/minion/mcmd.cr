@@ -155,7 +155,16 @@ module Minion
     end
 
     def parse_args
-      @config["command"].as(String).scan(/\w+\s*=\s*[^\s,]+/).map {|a| a[0].split(/\s*=\s*/, 2)}
+      @config["command"].
+        as(String).
+        scan(/\s*(\w+\s*=(?:.+?(?=\s+\w+=)|[^,]+))/).
+        map do |a|
+          a[0].
+            tr("\"","").
+            strip.
+            sub(/,\s*$/,"").
+            split(/\s*=\s*/, 2)
+        end
     end
 
     def parse_remote_command
@@ -180,6 +189,7 @@ module Minion
     end
 
     def execute
+      debug!(@args)
       execute_show if show?
 
       if run?
@@ -319,7 +329,7 @@ module Minion
         ]
         end
 
-        table = Tablo::Table.new(table_data) do |t|
+        table = Tablo::Table.new(table_data, connectors: Tablo::CONNECTORS_SINGLE_ROUNDED) do |t|
           t.add_column("Id") {|r| r[0]}
           t.add_column("Aliases") {|r| r[1]}
           t.add_column("Addresses") {|r| r[2]}
@@ -361,15 +371,25 @@ module Minion
       else
         table_data = [] of Array(String)
         data.map do |datum|
+          output = ""
+          begin
+            if datum[2].as_a.size == 1
+              output = JSON.parse(datum[2][0].as_s).to_pretty_json("  ")
+            else
+              output = datum[2].to_pretty_json("  ")
+            end
+          rescue ex
+            output = datum[2].to_s
+          end
           table_data << [
             datum[0],
             datum[1],
-            datum[2].to_s,
+            output,
             datum[3].to_s,
         ]
         end
 
-        table = Tablo::Table.new(table_data) do |t|
+        table = Tablo::Table.new(table_data, connectors: Tablo::CONNECTORS_SINGLE_ROUNDED) do |t|
           t.add_column("Server Id") {|r| r[0]}
           t.add_column("UUID") {|r| r[1]}
           t.add_column("Data") {|r| r[2]}
@@ -418,7 +438,7 @@ module Minion
         ]
         end
 
-        table = Tablo::Table.new(table_data) do |t|
+        table = Tablo::Table.new(table_data, connectors: Tablo::CONNECTORS_SINGLE_ROUNDED) do |t|
           t.add_column("Server Id") {|r| r[0]}
           t.add_column("UUID") {|r| r[1]}
           t.add_column("Service") {|r| r[2]}
@@ -598,17 +618,17 @@ module Minion
 
       sql = case key.downcase
       when "server"
-        "SELECT id FROM SERVERS WHERE id::text = $1 OR $1 = ANY(aliases) OR $1 = ANY(addresses) ORDER BY id"
+        "SELECT id FROM SERVERS WHERE id::text = $1 OR $1 = ANY(aliases) OR $1 = ANY(addresses) ORDER BY heartbeat_at asc, created_at asc"
       when "id"
         "SELECT id FROM SERVERS WHERE id::text = $1"
       when "alias"
-        "SELECT id FROM SERVERS WHERE $1 = ANY(aliases) ORDER BY id"
+        "SELECT id FROM SERVERS WHERE $1 = ANY(aliases) ORDER BY heartbeat_at asc, created_at asc"
       when "address"
-        "SELECT id FROM SERVERS WHERE $1 = ANY(addresses) ORDER BY id"
+        "SELECT id FROM SERVERS WHERE $1 = ANY(addresses) ORDER BY heartbeat_at asc, created_at asc"
       when "tag"
         "SELECT server_id FROM SERVERS_TAGS WHERE server_id = $1 ORDER BY server_id"
       when ""
-        "SELECT id from SERVERS ORDER BY id"
+        "SELECT id from SERVERS ORDER BY heartbeat_at asc, created_at asc"
       end
 
       if sql
@@ -636,6 +656,8 @@ module Minion
         arg[0] =~ /before|after|on/i
       end
       
+      debug!("Timestamp args: #{timestamp_args.inspect}")
+
       timestamp_keys = timestamp_args.map(&.first).map(&.downcase)
       before_count = timestamp_keys.select {|k| k == "before"}.size
       after_count = timestamp_keys.select {|k| k == "after"}.size
@@ -650,6 +672,7 @@ module Minion
         end
       end
 
+      debug!("Timestamp SQL: #{sql.inspect}")
       sql.reject(&.empty?).join
     end
 
@@ -669,7 +692,7 @@ module Minion
       after_cast, after_parsed_date = parse_and_cast_date_value(after)
 
       if before_parsed_date && after_parsed_date
-        "AND #{field} BETWEEN '#{before_parsed_date}'::timestamp AND '#{after_parsed_date}'\n"
+        "AND #{field} BETWEEN '#{after_parsed_date}' AND '#{before_parsed_date}'\n"
       else
         ""
       end
@@ -677,8 +700,10 @@ module Minion
 
     def date_before_or_after(field, arg)
       key, value = arg
+      debug!(arg)
       key = key.downcase
       cast, parsed_date = parse_and_cast_date_value(value)
+      debug!(parsed_date)
 
       if parsed_date && key == "before"
         "AND #{field}#{cast} < '#{parsed_date}'\n"

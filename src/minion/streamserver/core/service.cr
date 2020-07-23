@@ -4,11 +4,12 @@ module Minion
       # This struct stores the configuration information for a given logging destination.
       struct Service
         getter service : String
-        getter raw_destination : String | Nil
-        getter destination : Minion::StreamServer::Destination | Nil
-        getter cull : Bool | Nil
-        getter type : String | Nil
+        getter raw_destination : String?
+        getter destination : Minion::StreamServer::Destination?
+        getter cull : Bool?
+        getter type : String?
         getter options : Array(String)|Array(Hash(String,Bool | Float32 | Float64 | Int32 | Int64 | Slice(UInt8) | String | Time | Nil))
+        getter default : Bool
 
         DEFAULT_SERVICE = "default"
         DEFAULT_TYPE    = "file"
@@ -20,7 +21,8 @@ module Minion
           @destination = Minion::StreamServer::Core.default_log_destination,
           @cull = true,
           @type = DEFAULT_TYPE,
-          @options = DEFAULT_OPTIONS
+          @options = DEFAULT_OPTIONS,
+          @default = false
         )
           @raw_destination = @raw_destination.to_s
           @cull = !!cull
@@ -35,7 +37,8 @@ module Minion
             other.raw_destination == @raw_destination &&
             other.cull == @cull &&
             other.type == @type &&
-            other.options == @options
+            other.options == @options &&
+            other.default == @default
         end
       end
     end
