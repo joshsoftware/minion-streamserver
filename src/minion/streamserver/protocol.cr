@@ -79,6 +79,9 @@ module Minion
             sleep 0.01
           end
         end
+      rescue ex
+        STDERR.puts "Caught Error in protocol: #{ex}"
+        close
       end
 
       def send_data(data, flush_after_send = false)
@@ -96,9 +99,9 @@ module Minion
       end
 
       def close
-        @client.flush
+        @client.flush rescue IO::Error
       ensure
-        @client.close
+        @client.close rescue IO::Error
       end
     end
   end
