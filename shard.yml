@@ -1,12 +1,18 @@
-name: analogger
+name: minion-streamserver
 version: 0.1.0
 
 authors:
-  - Kirk Haines <wyhaines@gmail.com>
+  - Kirk Haines <kirk.haines@joshsoftware.com>
 
 targets:
-  analogger:
-    main: src/analogger.cr
+  streamserver:
+    main: src/minion/streamserver.cr
+  mcmd:
+    main: src/minion/mcmd.cr
+
+executables:
+  - streamserver
+  - mcmd
 
 crystal: 0.35.1
 
@@ -31,4 +37,3 @@ development_dependencies:
   ameba:
     github: crystal-ameba/ameba
     version: ~> 0.12.0
-

@@ -76,3 +76,78 @@ groups:
       - destination: STDERR
         type: io
 ```
+
+## Building The Software
+
+The Minion server and the CLI tool (MCMD) for Minion are written with the [https://crystal-lang.org/](Crystal Language.
+
+To build the software, Crystal must be installed in order for the software to be compiled.
+
+Full instructions for a wide variety of platforms are available on [https://crystal-lang.org/install/](the Crystal web site). A couple of the more common scenarios are summarized below:
+
+### Mac OS
+
+Using Homebrew:
+
+```
+brew update
+brew install crystal
+```
+
+### Ubuntu
+
+Add the signing key and the distribution repository to your configuration:
+
+```
+curl -sSL https://dist.crystal-lang.org/apt/setup.sh | sudo bash
+```
+
+If you prefer manual control over those steps:
+
+```
+curl -sL "https://keybase.io/crystal/pgp_keys.asc" | sudo apt-key add -
+echo "deb https://dist.crystal-lang.org/apt crystal main" | sudo tee /etc/apt/sources.list.d/crystal.list
+sudo apt-get update
+```
+
+After, you can install Crystal. For full support of all language features, some optional libraries are recommended:
+
+```
+sudo apt update
+sudo apt install libssl-dev      # for using OpenSSL
+sudo apt install libxml2-dev     # for using XML
+sudo apt install libyaml-dev     # for using YAML
+sudo apt install libgmp-dev      # for using Big numbers
+sudo apt install libz-dev        # for using crystal play
+```
+
+None of these are strictly necessary, but unless one has a reason not to install them, all are recommended.
+
+Installing Crystal is done through this command:
+
+```
+sudo apt update
+sudo apt install crystal
+```
+
+### Building The Executables
+
+To compile all binaries for deployment, the recommended command line is:
+
+```
+shards build --release -p -s -t --error-trace
+```
+
+This will build both `streamserver` and `mcmd` and place them in the `bin/` directory. Either may be built individually by specifying just it on the command line:
+
+```
+shards build mcmd --release -p -s -t --error-trace
+```
+
+The above commands build dynamically linked executables. To build a statically linked executable, just add `--static` to the command line:
+
+```
+shards build --release --static -p -s -t --error-trace
+```
+
+The `--error-trace` includes stack trace information in the build. If it is omitted, the build will be slightly smaller, but if there is an exception, the error message may not be useful for diagnosing the failure.
