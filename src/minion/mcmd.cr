@@ -8,6 +8,7 @@ require "debug"
 module Minion
   class MCMD
     VERSION = "0.1.0"
+    JSON_SPACING = "  "
 
     # mcmd is used to issue minion commands to agents via the command line.
     # It can:
@@ -322,7 +323,7 @@ module Minion
           table_data << [
             datum[0],
             datum[1].nil? ? "" : datum[1].not_nil!.join(", "),
-            datum[2].nil? ? "" : datum[2].not_nil!.join(", "),
+            datum[2].nil? ? "" : datum[2].not_nil!.join(",\n"),
             datum[3].to_s,
             datum[4].to_s,
             datum[5].to_s,
@@ -374,9 +375,9 @@ module Minion
           output = ""
           begin
             if datum[2].as_a.size == 1
-              output = JSON.parse(datum[2][0].as_s).to_pretty_json("  ")
+              output = JSON.parse(datum[2][0].as_s).to_pretty_json(JSON_SPACING)
             else
-              output = datum[2].to_pretty_json("  ")
+              output = datum[2].to_pretty_json(JSON_SPACING)
             end
           rescue ex
             output = datum[2].to_s
@@ -533,8 +534,8 @@ module Minion
       else
         table_data = [] of Array(String)
         data.map do |datum|
-          stdout = JSON.parse(datum[3].join).to_pretty_json("    ") rescue datum[3].join("\n")
-          stderr = JSON.parse(datum[4].join).to_pretty_json("    ").colorize(:red).to_s rescue datum[4].join("\n")
+          stdout = JSON.parse(datum[3].join).to_pretty_json(JSON_SPACING) rescue datum[3].join("\n")
+          stderr = JSON.parse(datum[4].join).to_pretty_json(JSON_SPACING).colorize(:red).to_s rescue datum[4].join("\n")
           ["out: #{stdout}", "err: #{stderr}"].each do |output|
             table_data << [
               "#{datum[0]}\n#{datum[1]}\n",
@@ -742,5 +743,7 @@ module Minion
 
   end
 end
+
+#####
 
 Minion::MCMD.run
