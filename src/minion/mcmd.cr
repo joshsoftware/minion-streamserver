@@ -7,7 +7,7 @@ require "debug"
 
 module Minion
   class MCMD
-    VERSION = "0.1.0"
+    VERSION      = "0.1.0"
     JSON_SPACING = "  "
 
     # mcmd is used to issue minion commands to agents via the command line.
@@ -28,7 +28,7 @@ module Minion
       getter config
 
       def initialize
-        @config = {} of String => String|Bool|Float32|Float64
+        @config = {} of String => String | Bool | Float32 | Float64
 
         parse_opts
       end
@@ -59,9 +59,9 @@ module Minion
             @config["pgurl"] = url
           end
 
-          #opts.on("-n", "--dry-run", "Display the query that would be performed, or the servers that the command would be ran against, but do not actually do it.") do
+          # opts.on("-n", "--dry-run", "Display the query that would be performed, or the servers that the command would be ran against, but do not actually do it.") do
           #  @config["dry-run"] = true
-          #end
+          # end
 
           opts.on("-f", "--format", "Format the output nicely into a table instead of rendering the output as CSV.") do
             @config["format"] = "table"
@@ -116,7 +116,8 @@ module Minion
     @verb : String = ""
     @subject : String = ""
     @args : Array(Array(String)) = [] of Array(String)
-    def initialize(@config : Hash(String, String|Bool|Float32|Float64))
+
+    def initialize(@config : Hash(String, String | Bool | Float32 | Float64))
       begin
         @db = DB.open(@config["pgurl"].as(String))
       rescue ex
@@ -136,35 +137,36 @@ module Minion
     end
 
     def parse_verb
-      if @config["command"] =~ /^\s*show\s/i
-        return "show"
-      elsif @config["command"] =~ /\srun\s/i
-        return "run"
+      if @config["command"] =~ /\s*show\s/i
+        "show"
+      elsif @config["command"] =~ /\s+run\s/i
+        "run"
       else
         ""
       end
     end
 
     def parse_subject
-      if parse_verb == "show"
-        @config["command"] =~ /\s*#{@verb}\s+(\w+)/
+      _verb = parse_verb
+      if _verb == "show"
+        @config["command"] =~ /\s*#{_verb}\s+(\w+)/
       else
-        @config["command"] =~ /\s*#{@verb}\s+(.*)$/
+        @config["command"] =~ /\s*#{_verb}\s+(.*)$/
       end
 
-      $1
+      $1.to_s
     end
 
     def parse_args
-      @config["command"].
-        as(String).
-        scan(/\s*(\w+\s*=(?:.+?(?=\s+\w+=)|[^,]+))/).
-        map do |a|
-          a[0].
-            tr("\"","").
-            strip.
-            sub(/,\s*$/,"").
-            split(/\s*=\s*/, 2)
+      @config["command"]
+        .as(String)
+        .scan(/\s*(\w+\s*=(?:.+?(?=(?:\s+\w+=|\srun))|[^,]+))/)
+        .map do |a|
+          a[0]
+            .tr("\"", "")
+            .strip
+            .sub(/,\s*$/, "")
+            .split(/\s*=\s*/, 2)
         end
     end
 
@@ -180,7 +182,7 @@ module Minion
 
     def get_type_and_command_from(data)
       if data =~ /^\s*internal:/i
-        type, command = data.split(/:/,2)
+        type, command = data.split(/:/, 2)
       else
         type = "external"
         command = data
@@ -224,38 +226,41 @@ module Minion
 
         if server_command
           spawn do
-            start = Time.monotonic
-            sleep_time = 0.001
-            sleep_factor = 1.1
-            sleep_max = 0.5
-            still_waiting = true
-            while still_waiting && ((Time.monotonic - start).to_f < @config["timeout"].as(Float64))
-              @db.try do |db|
-                db.using_connection do |cnn|
-                  sql = <<-ESQL
+            begin
+              start = Time.monotonic
+              sleep_time = 0.001
+              sleep_factor = 1.1
+              sleep_max = 1.5
+              still_waiting = true
+              while still_waiting && ((Time.monotonic - start).to_f < @config["timeout"].as(Float64))
+                @db.try do |db|
+                  db.using_connection do |cnn|
+                    sql = <<-ESQL
                   SELECT response_id FROM servers_commands where id = $1
                   ESQL
-                  response = cnn.query_one(sql, server_command, as: {String?})
+                    response = cnn.query_one(sql, server_command, as: {String?})
 
-                  if response
-                    sql = <<-ESQL
+                    if response
+                      sql = <<-ESQL
                     SELECT stdout, stderr, hash, updated_at FROM command_responses WHERE id = $1
                     ESQL
-                    stdout, stderr, hash, updated_at = cnn.query_one(sql, response, as: {Array(String), Array(String), String, Time})
-                    puts "#{server}[#{updated_at}]:\n#{stdout.join}" if !stdout.join.empty?
-                    puts "#{server}[#{updated_at}]:\n#{stderr.join}".colorize(:red) if !stderr.join.empty?
-                    still_waiting = false
+                      stdout, stderr, hash, updated_at = cnn.query_one(sql, response, as: {Array(String), Array(String), String, Time})
+                      puts "#{server}[#{updated_at}]:\n#{stdout.join}" if !stdout.join.empty?
+                      puts "#{server}[#{updated_at}]:\n#{stderr.join}".colorize(:red) if !stderr.join.empty?
+                      still_waiting = false
+                    end
                   end
                 end
-              end
 
-              sleep sleep_time
-              if sleep_time < sleep_max
-                sleep_time *= sleep_factor
-                sleep_time = sleep_max if sleep_time > sleep_max
+                sleep sleep_time if still_waiting
+                if sleep_time < sleep_max
+                  sleep_time *= sleep_factor
+                  sleep_time = sleep_max if sleep_time > sleep_max
+                end
               end
+            ensure
+              finish_notifications.send(server)
             end
-            finish_notifications.send(server)
           end
         end
       end
@@ -308,7 +313,7 @@ module Minion
             ORDER BY heartbeat_at ASC, created_at ASC
             ESQL
             debug!(sql)
-            data << cnn.query_one(sql, server, as: {String, Array(String)?, Array(String)?, String?, Time?, Time?}) rescue {"",nil,nil,nil,nil,nil}
+            data << cnn.query_one(sql, server, as: {String, Array(String)?, Array(String)?, String?, Time?, Time?}) rescue {"", nil, nil, nil, nil, nil}
           end
         end
       end
@@ -327,16 +332,16 @@ module Minion
             datum[3].to_s,
             datum[4].to_s,
             datum[5].to_s,
-        ]
+          ]
         end
 
         table = Tablo::Table.new(table_data, connectors: Tablo::CONNECTORS_SINGLE_ROUNDED) do |t|
-          t.add_column("Id") {|r| r[0]}
-          t.add_column("Aliases") {|r| r[1]}
-          t.add_column("Addresses") {|r| r[2]}
-          t.add_column("Organization Id") {|r| r[3]}
-          t.add_column("Created At") {|r| r[4]}
-          t.add_column("Heartbeat At") {|r| r[5]}
+          t.add_column("Id") { |r| r[0] }
+          t.add_column("Aliases") { |r| r[1] }
+          t.add_column("Addresses") { |r| r[2] }
+          t.add_column("Organization Id") { |r| r[3] }
+          t.add_column("Created At") { |r| r[4] }
+          t.add_column("Heartbeat At") { |r| r[5] }
         end
 
         table.shrinkwrap!
@@ -387,14 +392,14 @@ module Minion
             datum[1],
             output,
             datum[3].to_s,
-        ]
+          ]
         end
 
         table = Tablo::Table.new(table_data, connectors: Tablo::CONNECTORS_SINGLE_ROUNDED) do |t|
-          t.add_column("Server Id") {|r| r[0]}
-          t.add_column("UUID") {|r| r[1]}
-          t.add_column("Data") {|r| r[2]}
-          t.add_column("Created At") {|r| r[3]}
+          t.add_column("Server Id") { |r| r[0] }
+          t.add_column("UUID") { |r| r[1] }
+          t.add_column("Data") { |r| r[2] }
+          t.add_column("Created At") { |r| r[3] }
         end
 
         table.shrinkwrap!
@@ -436,15 +441,15 @@ module Minion
             datum[2],
             datum[3],
             datum[4].to_s,
-        ]
+          ]
         end
 
         table = Tablo::Table.new(table_data, connectors: Tablo::CONNECTORS_SINGLE_ROUNDED) do |t|
-          t.add_column("Server Id") {|r| r[0]}
-          t.add_column("UUID") {|r| r[1]}
-          t.add_column("Service") {|r| r[2]}
-          t.add_column("Message") {|r| r[3]}
-          t.add_column("Created At") {|r| r[4]}
+          t.add_column("Server Id") { |r| r[0] }
+          t.add_column("UUID") { |r| r[1] }
+          t.add_column("Service") { |r| r[2] }
+          t.add_column("Message") { |r| r[3] }
+          t.add_column("Created At") { |r| r[4] }
         end
 
         table.shrinkwrap!
@@ -487,16 +492,16 @@ module Minion
             datum[3],
             datum[4].to_s,
             datum[5].to_s,
-        ]
+          ]
         end
 
         table = Tablo::Table.new(table_data, connectors: Tablo::CONNECTORS_SINGLE_ROUNDED) do |t|
-          t.add_column("Server Id") {|r| r[0]}
-          t.add_column("Command Id") {|r| r[1]}
-          t.add_column("ARGV") {|r| r[2]}
-          t.add_column("Type") {|r| r[3]}
-          t.add_column("Dispatched At") {|r| r[4]}
-          t.add_column("Response At") {|r| r[5]}
+          t.add_column("Server Id") { |r| r[0] }
+          t.add_column("Command Id") { |r| r[1] }
+          t.add_column("ARGV") { |r| r[2] }
+          t.add_column("Type") { |r| r[3] }
+          t.add_column("Dispatched At") { |r| r[4] }
+          t.add_column("Response At") { |r| r[5] }
         end
 
         table.shrinkwrap!
@@ -547,10 +552,10 @@ module Minion
         end
 
         table = Tablo::Table.new(table_data, connectors: Tablo::CONNECTORS_SINGLE_ROUNDED) do |t|
-          t.add_column("Server+Command Id") {|r| r[0]}
-          t.add_column("ARGV") {|r| r[1]}
-          t.add_column("STDOUT + STDERR") {|r| r[2]}
-          t.add_column("Response At") {|r| r[3]}
+          t.add_column("Server+Command Id") { |r| r[0] }
+          t.add_column("ARGV") { |r| r[1] }
+          t.add_column("STDOUT + STDERR") { |r| r[2] }
+          t.add_column("Response At") { |r| r[3] }
         end
 
         table.shrinkwrap!
@@ -596,18 +601,18 @@ module Minion
           end
         end
       end
-      { command_id, servers }
+      {command_id, servers}
     end
 
     def get_servers
-      servers = @args.dup.unshift(["",""]).map do |arg|
+      servers = @args.dup.unshift(["", ""]).map do |arg|
         find_server_by(arg)
       end
 
       if servers.size > 1
-        servers[1..-1].
-          reject(&.empty?).
-          reduce(servers[0]) {|a, v| a & v}
+        servers[1..-1]
+          .reject(&.empty?)
+          .reduce(servers[0]) { |a, v| a & v }
       else
         servers.flatten
       end
@@ -618,19 +623,19 @@ module Minion
       results = [] of String
 
       sql = case key.downcase
-      when "server"
-        "SELECT id FROM SERVERS WHERE id::text = $1 OR $1 = ANY(aliases) OR $1 = ANY(addresses) ORDER BY heartbeat_at asc, created_at asc"
-      when "id"
-        "SELECT id FROM SERVERS WHERE id::text = $1"
-      when "alias"
-        "SELECT id FROM SERVERS WHERE $1 = ANY(aliases) ORDER BY heartbeat_at asc, created_at asc"
-      when "address"
-        "SELECT id FROM SERVERS WHERE $1 = ANY(addresses) ORDER BY heartbeat_at asc, created_at asc"
-      when "tag"
-        "SELECT server_id FROM SERVERS_TAGS WHERE server_id = $1 ORDER BY server_id"
-      when ""
-        "SELECT id from SERVERS ORDER BY heartbeat_at asc, created_at asc"
-      end
+            when "server"
+              "SELECT id FROM SERVERS WHERE id::text = $1 OR $1 = ANY(aliases) OR $1 = ANY(addresses) ORDER BY heartbeat_at asc, created_at asc"
+            when "id"
+              "SELECT id FROM SERVERS WHERE id::text = $1"
+            when "alias"
+              "SELECT id FROM SERVERS WHERE $1 = ANY(aliases) ORDER BY heartbeat_at asc, created_at asc"
+            when "address"
+              "SELECT id FROM SERVERS WHERE $1 = ANY(addresses) ORDER BY heartbeat_at asc, created_at asc"
+            when "tag"
+              "SELECT server_id FROM SERVERS_TAGS WHERE server_id = $1 ORDER BY server_id"
+            when ""
+              "SELECT id from SERVERS ORDER BY heartbeat_at asc, created_at asc"
+            end
 
       if sql
         @db.try do |db|
@@ -656,12 +661,12 @@ module Minion
       timestamp_args = @args.select do |arg|
         arg[0] =~ /before|after|on/i
       end
-      
+
       debug!("Timestamp args: #{timestamp_args.inspect}")
 
       timestamp_keys = timestamp_args.map(&.first).map(&.downcase)
-      before_count = timestamp_keys.select {|k| k == "before"}.size
-      after_count = timestamp_keys.select {|k| k == "after"}.size
+      before_count = timestamp_keys.select { |k| k == "before" }.size
+      after_count = timestamp_keys.select { |k| k == "after" }.size
 
       if before_count == 1 && after_count == 1
         sql << date_between(field, timestamp_args)
@@ -740,7 +745,6 @@ module Minion
 
       {cast, parsed_date}
     end
-
   end
 end
 

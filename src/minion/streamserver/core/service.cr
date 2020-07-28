@@ -8,7 +8,7 @@ module Minion
         getter destination : Minion::StreamServer::Destination?
         getter cull : Bool?
         getter type : String?
-        getter options : Array(String)|Array(Hash(String,Bool | Float32 | Float64 | Int32 | Int64 | Slice(UInt8) | String | Time | Nil))
+        getter options : Array(String) | Array(Hash(String, Bool | Float32 | Float64 | Int32 | Int64 | Slice(UInt8) | String | Time | Nil))
         getter default : Bool
 
         DEFAULT_SERVICE = "default"

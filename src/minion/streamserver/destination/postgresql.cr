@@ -12,7 +12,8 @@ module Minion
         getter destination
 
         @options : Hash(String, Bool | Float32 | Float64 | Int32 | Int64 | Slice(UInt8) | String | Time | Nil)
-        def initialize(@destination : String, options : Array(String)|Array(Hash(String,Bool | Float32 | Float64 | Int32 | Int64 | Slice(UInt8) | String | Time | Nil)))
+
+        def initialize(@destination : String, options : Array(String) | Array(Hash(String, Bool | Float32 | Float64 | Int32 | Int64 | Slice(UInt8) | String | Time | Nil)))
           @options = parse_options(options)
           set_option_defaults
 

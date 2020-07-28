@@ -9,27 +9,27 @@ module Minion
         DateFields = {"created_at", "updated_at"}
 
         def self.fields_from_table(table, frame, data_only)
-            case table
-            when "logs"
-              {
-                  frame.data[1].as(String),
-                  frame.uuid.to_s,
-                  frame.data[2].as(String),
-                  string_from_string_or_array(frame.data[3]),
-              }
-            when "telemetries"
-              {
-                  frame.data[1].as(String),
-                  frame.uuid.to_s,
-                  frame.data[2..-1].to_json,
-              }
-            else
-              {
-                  frame.data[1].as(String),
-                  frame.uuid.to_s,
-                  frame.data[2].to_json,
-              }
-            end
+          case table
+          when "logs"
+            {
+              frame.data[1].as(String),
+              frame.uuid.to_s,
+              frame.data[2].as(String),
+              string_from_string_or_array(frame.data[3]),
+            }
+          when "telemetries"
+            {
+              frame.data[1].as(String),
+              frame.uuid.to_s,
+              frame.data[2..-1].to_json,
+            }
+          else
+            {
+              frame.data[1].as(String),
+              frame.uuid.to_s,
+              frame.data[2].to_json,
+            }
+          end
         end
 
         def self.fields_from_table(table, frame)
@@ -43,7 +43,7 @@ module Minion
                 frame.uuid.to_s,
                 frame.data[2].as(String),
                 string_from_string_or_array(frame.data[3]),
-               },
+              },
             }
           when "telemetries"
             {
@@ -53,7 +53,7 @@ module Minion
                 frame.data[1].as(String),
                 frame.uuid.to_s,
                 frame.data[2..-1].to_json,
-          },
+              },
             }
           else
             {
@@ -63,7 +63,7 @@ module Minion
                 frame.data[1].as(String),
                 frame.uuid.to_s,
                 frame.data[2].to_json,
-          },
+              },
             }
           end
         end

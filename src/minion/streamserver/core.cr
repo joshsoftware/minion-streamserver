@@ -124,12 +124,12 @@ module Minion
           server = frame.data[1]
           service_label = frame.data[2]
           service = if group.logs.has_key?(service_label)
-            group.logs[service_label]
-          elsif group.default_log.is_a?(Minion::StreamServer::Core::Service)
-            group.default_log.as(Minion::StreamServer::Core::Service)
-          else
-            nil
-          end
+                      group.logs[service_label]
+                    elsif group.default_log.is_a?(Minion::StreamServer::Core::Service)
+                      group.default_log.as(Minion::StreamServer::Core::Service)
+                    else
+                      nil
+                    end
 
           if service && service.cull
             cull_tracker = @cull_tracker[id]
@@ -326,7 +326,7 @@ module Minion
           group_telemetry = populate_telemetry(group)
           # group_responses = populate_responses(group)
           group_command = populate_command(group)
-          default_log = group_logs.values.find(if_none: "default") {|service| service.default}
+          default_log = group_logs.values.find(if_none: "default") { |service| service.default }
           @groups[group.id] = Group.new(
             id: group.id,
             key: group.key,
@@ -504,7 +504,7 @@ module Minion
         destination.reopen if destination.respond_to? :reopen
       end
 
-      def setup_destination(destination : String, type : String? = "file", options : Array(String)|Array(Hash(String,Bool | Float32 | Float64 | Int32 | Int64 | Slice(UInt8) | String | Time | Nil))? = ["ab"])
+      def setup_destination(destination : String, type : String? = "file", options : Array(String) | Array(Hash(String, Bool | Float32 | Float64 | Int32 | Int64 | Slice(UInt8) | String | Time | Nil))? = ["ab"])
         type ||= "file"
         type = type.to_s.downcase
 
