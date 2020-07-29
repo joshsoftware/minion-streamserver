@@ -19,7 +19,6 @@ module Minion
             }
           when "telemetries"
             telemetry_data_ary = frame.data[2..-1]
-            
             if telemetry_data_ary.size == 1 && telemetry_data_ary[0][0..4] == "JSON:"
               telemetry_data = telemetry_data_ary[0][5..-1].as(String)
             else
@@ -55,13 +54,21 @@ module Minion
               },
             }
           when "telemetries"
+            telemetry_data_ary = frame.data[2..-1]
+            if telemetry_data_ary.size == 1 && telemetry_data_ary[0][0..4] == "JSON:"
+              telemetry_data = telemetry_data_ary[0][5..-1].as(String)
+            else
+              telemetry_data = telemetry_data_ary.map do |datum|
+                datum.is_a?(String) && datum[0..4] == "JSON:" ? JSON.parse(datum[5..-1]) : datum
+              end.to_json
+            end
             {
               table:   table,
               columns: {"server_id", "uuid", "data"},
               data:    {
                 frame.data[1].as(String),
                 frame.uuid.to_s,
-                frame.data[2..-1].to_json,
+                telemetry_data,
               },
             }
           else
