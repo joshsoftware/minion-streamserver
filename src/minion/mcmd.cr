@@ -33,13 +33,7 @@ module Minion
         parse_opts
       end
 
-      def parse_opts
-        command = [] of String
-        @config["pgurl"] = ENV["PG_URL"] if ENV.has_key?("PG_URL")
-        @config["synchronous"] = false
-        @config["timeout"] = 30.0
-        @config["format"] = "csv"
-
+      def get_option_parser(command = [] of String)
         OptionParser.new do |opts|
           opts.banner = <<-EUSAGE
           MCMD Minion Command v#{VERSION}
@@ -90,7 +84,17 @@ module Minion
               command << arg
             end
           end
-        end.parse
+        end
+      end
+
+      def parse_opts
+        command = [] of String
+        @config["pgurl"] = ENV["PG_URL"] if ENV.has_key?("PG_URL")
+        @config["synchronous"] = false
+        @config["timeout"] = 30.0
+        @config["format"] = "csv"
+
+        get_option_parser(command).parse
 
         @config["command"] = command.join(" ")
       end
@@ -101,6 +105,7 @@ module Minion
       mcmd = self.new(config)
 
       if mcmd.connected?
+        puts "4"
         mcmd.execute
       else
         STDERR.puts "Error: #{mcmd.error}"
@@ -125,7 +130,11 @@ module Minion
         @error = ex.to_s
       end
 
-      @verb, @subject, @args = parse_command if connected?
+      begin
+        @verb, @subject, @args = parse_command if connected?
+      rescue
+        Config.new.get_option_parser.parse(["-h"])
+      end
     end
 
     def connected?
