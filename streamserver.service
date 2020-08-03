@@ -1,0 +1,18 @@
+# Drop this under /etc/systemd/system/minion-streamserver.service
+# Then run systemctl daemon-reload
+# Then systemctl status minion-streamserver
+[Unit]
+Description=Minion Stream Server
+After=network.target
+
+[Service]
+# Environment=""
+WorkingDirectory=/home/ubuntu/streamserver
+ExecStart=/home/ubuntu/streamserver/streamserver -c /home/ubuntu/streamserver/streamserver.cnf
+ExecStop=/bin/kill -s QUIT $MAINPID
+User=root
+Group=root
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
