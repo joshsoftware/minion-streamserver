@@ -105,7 +105,6 @@ module Minion
       mcmd = self.new(config)
 
       if mcmd.connected?
-        puts "4"
         mcmd.execute
       else
         STDERR.puts "Error: #{mcmd.error}"
@@ -419,18 +418,40 @@ module Minion
     def execute_show_logs
       servers = get_servers
       data = [] of {String, String, String, String, Time?}
+      arg_n = 0
+      where_clauses = [
+        "WHERE server_id IN(#{servers.map {|s| arg_n += 1; "$#{arg_n}" }.join(",")})",
+        where_by_date("created_at")
+      ]
+
+      where_args = [] of String|Array(String)
+      where_args += servers
+
+      sqls, args = where_by_tsquery("tsv")
+      if sqls
+        sqls.each do |sql|
+          if sql =~ /<ARGN>/
+            arg_n += 1
+            where_clauses << "AND #{sql.gsub(/<ARGN>/, "$#{arg_n}")}"
+          end
+        end
+        where_args += args unless args.nil?
+      end
+
       @db.try do |db|
         db.using_connection do |cnn|
+          debug!(servers)
           servers.each do |server|
+            debug!(server)
+            debug!(where_args)
             sql = <<-ESQL
             SELECT server_id, uuid, service, msg, created_at
             FROM logs
-            WHERE server_id = $1
-            #{where_by_date("created_at")}
+            #{where_clauses.join("\n")}
             ORDER BY server_id ASC, created_at ASC 
             ESQL
             debug!(sql)
-            cnn.query_each(sql, server) do |rs|
+            cnn.query_each(sql, args: where_args) do |rs|
               data << {rs.read(String), rs.read(String), rs.read(String), rs.read(String), rs.read(Time)}
             end
           end
@@ -665,7 +686,7 @@ module Minion
       results
     end
 
-    def where_by_date(field)
+    def where_by_date(field) : String
       sql = [] of String
       timestamp_args = @args.select do |arg|
         arg[0] =~ /before|after|on/i
@@ -689,6 +710,23 @@ module Minion
 
       debug!("Timestamp SQL: #{sql.inspect}")
       sql.reject(&.empty?).join
+    end
+
+    def where_by_tsquery(field) : Tuple(Array(String)?, Array(String)?)
+      sqls = [] of String
+      args = [] of String
+      ts_args = @args.select do |arg|
+        arg[0] =~ /text|tsquery/
+      end
+
+      debug!("Fulltext args: #{ts_args.inspect}")
+
+      ts_args.each do |arg|
+        sqls << "#{field} @@ to_tsquery('english', <ARGN>)"
+        args << arg[1]
+      end
+
+      { sqls.size > 0 ? sqls : nil, args.size > 0 ? args : nil }
     end
 
     def date_between(field, args)
