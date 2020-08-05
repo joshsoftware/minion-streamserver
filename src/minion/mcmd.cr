@@ -799,7 +799,7 @@ module Minion
     def to_csv_impl(data, header)
       puts(
         CSV.build do |csv|
-        csv.row header
+        csv.row *header
         
         data.map(&.to_a).each do |datum|
           csv.row yield(datum)
