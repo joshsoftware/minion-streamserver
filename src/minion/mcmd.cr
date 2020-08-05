@@ -327,14 +327,9 @@ module Minion
         end
       end
       if @config["format"] == "csv"
-        puts(CSV.build do |csv|
-          csv.row "id", "aliases", "addresses", "organization_id", "created_at", "heartbeat_at"
-          
-          data.each do |datum|
-            row = [datum[0], datum[1], datum[2].nil? ? "" : datum[2].not_nil!.join(","), datum[3], datum[4], datum[5]]
-            csv.row row
-          end
-        end)
+        to_csv(data.to_a, ["id", "aliases", "addresses", "organization_id", "created_at", "heartbeat_at"]) do |datum|
+          [datum[0], datum[1], datum[2].nil? ? "" : datum[2].not_nil!.as(Array).join(","), datum[3], datum[4], datum[5]]
+        end
       else
         table_data = [] of Array(String)
         data.map do |datum|
@@ -383,13 +378,7 @@ module Minion
         end
       end
       if @config["format"] == "csv"
-        puts(CSV.build do |csv|
-          csv.row "server_id", "uuid", "data", "created_at"
-          
-          data.each do |datum|
-            csv.row datum.map(&.to_s)
-          end
-        end)
+        to_csv(data.to_a, ["server_id", "uuid", "data", "created_at"])
       else
         table_data = [] of Array(String)
         data.map do |datum|
@@ -466,13 +455,7 @@ module Minion
         end
       end
       if @config["format"] == "csv"
-        puts(CSV.build do |csv|
-          csv.row "server_id", "uuid", "service", "msg", "created_at"
-
-          data.each do |datum|
-            csv.row datum.map(&.to_s)
-          end
-        end)
+        to_csv(data.to_a, ["server_id", "uuid", "service", "msg", "created_at"])
       else
         table_data = [] of Array(String)
         data.map do |datum|
@@ -519,13 +502,7 @@ module Minion
         end
       end
       if @config["format"] == "csv"
-        puts(CSV.build do |csv|
-          csv.row "server_id", "command_id", "argv", "type", "dispatched_at", "response_at"
-
-          data.each do |datum|
-            csv.row datum.map(&.to_s)
-          end
-        end)
+        to_csv(data.to_a, ["server_id", "command_id", "argv", "type", "dispatched_at", "response_at"])
       else
         table_data = [] of Array(String)
         data.map do |datum|
@@ -576,13 +553,7 @@ module Minion
         end
       end
       if @config["format"] == "csv"
-        puts(CSV.build do |csv|
-          csv.row "server_id", "commands_id", "argv", "stdout", "stderr", "response_at"
-          
-          data.each do |datum|
-            csv.row datum.map(&.to_s)
-          end
-        end)
+        to_csv(data.to_a, ["server_id", "commands_id", "argv", "stdout", "stderr", "response_at"])
       else
         table_data = [] of Array(String)
         data.map do |datum|
@@ -815,6 +786,25 @@ module Minion
       loop do
         "-\\|/".each_char { |c| print "\r#{c}"; Fiber.yield }
       end
+    end
+
+    def to_csv(data, *header)
+      to_csv_impl(data, header) {|datum| datum.map(&.to_s)}
+    end
+
+    def to_csv(data, *header, &formatter : Array(String|Array(String)|Time?) -> Array(String|Array(String)?|Time?))
+      to_csv_impl(data, header, &formatter)
+    end
+
+    def to_csv_impl(data, header)
+      puts(
+        CSV.build do |csv|
+        csv.row header
+        
+        data.map(&.to_a).each do |datum|
+          csv.row yield(datum)
+        end
+      end)
     end
 
   end
