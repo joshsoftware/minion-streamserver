@@ -1,3 +1,4 @@
+require "random/isaac"
 require "./core/*"
 require "./destination_registry"
 # require "./destination/*"
@@ -17,6 +18,8 @@ end
 module Minion
   class StreamServer
     class Core
+      @@prng = Random::ISAAC.new
+
       property config : Config
       property invocation_arguments : ExecArguments
       property key : String
@@ -136,9 +139,17 @@ module Minion
             if cull_tracker[service_label][server].msg == string_from_string_or_array(frame.data[3])
               cull_tracker[service_label][server].increment
             elsif cull_tracker[service_label][server].positive?
+              new_uuid = frame.uuid
+              loop do
+                timestamp = frame.uuid.as(Minion::UUID).timestamp
+                identifier = @@prng.random_bytes(6).to_slice
+                new_uuid = UUID.new(timestamp: timestamp.not_nil!, identifier: identifier)
+                break if new_uuid != frame.uuid
+              end
+
               new_frame = Frame.new(
                 verb: frame.verb,
-                uuid: frame.uuid,
+                uuid: new_uuid,
                 data: [
                   frame.data[0].as(String),
                   frame.data[1].as(String),

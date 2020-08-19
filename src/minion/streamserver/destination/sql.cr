@@ -45,7 +45,7 @@ module Minion
           when "logs"
             {
               table:   table,
-              columns: {"server_id", "uuid", "service", "msg"},
+              columns: {"server_id", "id", "service", "msg"},
               data:    {
                 frame.data[1].as(String),
                 frame.uuid.to_s,
@@ -64,7 +64,7 @@ module Minion
             end
             {
               table:   table,
-              columns: {"server_id", "uuid", "data"},
+              columns: {"server_id", "id", "data"},
               data:    {
                 frame.data[1].as(String),
                 frame.uuid.to_s,

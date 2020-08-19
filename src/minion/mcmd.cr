@@ -364,7 +364,7 @@ module Minion
         db.using_connection do |cnn|
           servers.each do |server|
             sql = <<-ESQL
-            SELECT server_id, uuid, data, created_at
+            SELECT server_id, id, data, created_at
             FROM telemetries
             WHERE server_id = $1
             #{where_by_date("created_at")}
@@ -378,7 +378,7 @@ module Minion
         end
       end
       if @config["format"] == "csv"
-        to_csv(data.to_a, ["server_id", "uuid", "data", "created_at"])
+        to_csv(data.to_a, ["server_id", "id", "data", "created_at"])
       else
         table_data = [] of Array(String)
         data.map do |datum|
@@ -442,7 +442,7 @@ module Minion
             debug!(server)
             debug!(where_args)
             sql = <<-ESQL
-            SELECT server_id, uuid, service, msg, created_at
+            SELECT server_id, id, service, msg, created_at
             FROM logs
             #{where_clauses.join("\n")}
             ORDER BY server_id ASC, created_at ASC 
@@ -455,7 +455,7 @@ module Minion
         end
       end
       if @config["format"] == "csv"
-        to_csv(data.to_a, ["server_id", "uuid", "service", "msg", "created_at"])
+        to_csv(data.to_a, ["server_id", "id", "service", "msg", "created_at"])
       else
         table_data = [] of Array(String)
         data.map do |datum|
