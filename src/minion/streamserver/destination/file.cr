@@ -16,10 +16,11 @@ module Minion
         getter handle : Fiber
         getter channel
         getter file_handle : ::File
+        getter failure_notification_channel : Channel(Bool)
 
         NEWLINE = "\n".to_slice
 
-        def initialize(@destination : String, @options : Array(String) | Array(Hash(String, Bool | Float32 | Float64 | Int32 | Int64 | Slice(UInt8) | String | Time | Nil)))
+        def initialize(@destination : String, @options : Array(String) | Array(Hash(String, Bool | Float32 | Float64 | Int32 | Int64 | Slice(UInt8) | String | Time | Nil)), @failure_notification_channel : Channel(Bool))
           @channel = Channel(Frame).new(1024)
           mode = @options.as?(Array) ? options.first : "ab"
           @file_handle = ::File.open(@destination, mode)

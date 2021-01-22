@@ -49,10 +49,11 @@ module Minion
         @groups = Hash(String, Group).new
         @cull_tracker = CullTracker.new
         @queue = Hash(String, Channel(Frame)).new { |h, k| h[k] = Channel(Frame).new }
-        @handlers = Hash(String, Fiber).new
+        @handlers = [] of Fiber
         @rcount = 0
         @wcount = 0
         @registered_agents = {} of String => Protocol
+        @registered_agents_by_group = Hash(Group, Array(Protocol)).new { |h,k| h[k] = Array(Protocol).new}
         @now = Time.local
       end
 
@@ -72,7 +73,13 @@ module Minion
         )
 
         while client = server.accept?
-          spawn handle(client)
+          @handlers << spawn handle(client)
+        end
+      end
+
+      def setup_database_monitor
+        spawn do
+
         end
       end
 
@@ -235,7 +242,7 @@ module Minion
       end
 
       def register_agent(group, frame, protocol)
-        register_agent_connection(frame.data[1].to_s, protocol)
+        register_agent_connection(frame.data[1].to_s, protocol, group)
         id = frame.data[0]
         group = @groups[id]?
         agent_address = protocol.client.remote_address.address
@@ -290,7 +297,8 @@ module Minion
         rec
       end
 
-      def register_agent_connection(agent_id, handler)
+      def register_agent_connection(agent_id, handler, group)
+        @registered_agents_by_group[group] << handler
         @registered_agents[agent_id] = handler
       end
 
@@ -333,8 +341,9 @@ module Minion
       def populate_groups
         # Read through each Group stanza
         @config.groups.each do |group|
-          group_logs = populate_services(group)
-          group_telemetry = populate_telemetry(group)
+          failure_notification_channel = Channel(Bool).new
+          group_logs = populate_services(group, failure_notification_channel)
+          group_telemetry = populate_telemetry(group, failure_notification_channel)
           # group_responses = populate_responses(group)
           group_command = populate_command(group)
           default_log = group_logs.values.find(if_none: "default") { |service| service.default }
@@ -344,11 +353,34 @@ module Minion
             logs: group_logs,
             default_log: default_log,
             telemetry: group_telemetry,
-            command: group_command)
+            command: group_command,
+            failure_notification_channel: failure_notification_channel)
+
+          spawn handle_group_failure(@groups[group.id])
+        end
+
+      end
+
+      def handle_group_failure(group)
+        loop do
+          status = group.failure_notification_channel.receive
+
+          if status # There was a failure of the group
+            group.valid = false
+            disconnect_all_group_clients(group)
+          else
+            group.valid = true
+          end
         end
       end
 
-      def populate_services(group)
+      def disconnect_all_group_clients(group)
+        @registered_agents_by_group[group].each do |protocol|
+          protocol.close
+        end
+      end
+
+      def populate_services(group, failure_notification_channel)
         group_services = {} of String => Service
 
         group.services.each do |service|
@@ -379,7 +411,8 @@ module Minion
                 destination: setup_destination(
                   destination: destination_or_default,
                   type: type_or_default,
-                  options: options_or_default),
+                  options: options_or_default,
+                  failure_notification_channel: failure_notification_channel),
                 cull: service.cull ||
                       group.service_defaults.not_nil!.cull ||
                       @config.service_defaults.not_nil!.cull ||
@@ -397,7 +430,8 @@ module Minion
               destination: setup_destination(
                 destination: destination_or_default,
                 type: type_or_default,
-                options: options_or_default),
+                options: options_or_default,
+                failure_notification_channel: failure_notification_channel),
               cull: service.cull ||
                     group.service_defaults.not_nil!.cull ||
                     @config.service_defaults.not_nil!.cull ||
@@ -412,7 +446,7 @@ module Minion
         group_services
       end
 
-      def populate_telemetry(group)
+      def populate_telemetry(group, failure_notification_channel)
         group_telemetry = [] of Telemetry
 
         group.telemetry.each do |telemetry|
@@ -437,14 +471,15 @@ module Minion
             destination: setup_destination(
               destination: destination_or_default,
               type: type_or_default,
-              options: options_or_default)
+              options: options_or_default,
+              failure_notification_channel: failure_notification_channel)
           )
         end
 
         group_telemetry
       end
 
-      def populate_responses(group)
+      def populate_responses(group, failure_notification_channel)
         group_responses = [] of Response
 
         group.responses.each do |response|
@@ -454,7 +489,8 @@ module Minion
             destination: setup_destination(
               destination: response.destination,
               type: response.type,
-              options: response.options)
+              options: response.options,
+              failure_notification_channel: failure_notification_channel)
           )
         end
 
@@ -515,12 +551,15 @@ module Minion
         destination.reopen if destination.respond_to? :reopen
       end
 
-      def setup_destination(destination : String, type : String? = "file", options : Array(String) | Array(Hash(String, Bool | Float32 | Float64 | Int32 | Int64 | Slice(UInt8) | String | Time | Nil))? = ["ab"])
+      def setup_destination(
+        destination : String, type : String? = "file",
+        options : Array(String) | Array(Hash(String, Bool | Float32 | Float64 | Int32 | Int64 | Slice(UInt8) | String | Time | Nil))? = ["ab"],
+        failure_notification_channel = Channel(Bool).new)
         type ||= "file"
         type = type.to_s.downcase
 
         obj = Minion::StreamServer::DestinationRegistry.get(type)
-        obj.new(destination, options)
+        obj.new(destination, options, failure_notification_channel)
       rescue e : Exception
         STDERR.puts e
         STDERR.puts e.backtrace.join("\n")

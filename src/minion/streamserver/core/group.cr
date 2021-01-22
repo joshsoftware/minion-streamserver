@@ -9,6 +9,7 @@ module Minion
         getter telemetry
         getter command
         getter default_log
+        getter valid
 
         def initialize(
           @id : String,
@@ -16,8 +17,10 @@ module Minion
           @logs : Hash(String, Service) = Hash(String, Service).new { |h, k| h[k] = Service.new(service: k) },
           @default_log : Minion::StreamServer::Core::Service | String = "",
           @telemetry : Array(Telemetry) = [] of Telemetry,
-          @command : Array(Command)? = [] of Command
+          @command : Array(Command)? = [] of Command,
+          @valid : Bool = true
         )
+          @failure_notification_channel = Channel(Bool).new
         end
 
         def to_s

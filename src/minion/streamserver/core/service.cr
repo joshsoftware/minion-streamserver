@@ -24,8 +24,13 @@ module Minion
           @options = DEFAULT_OPTIONS,
           @default = false
         )
+          @failure_notification_channel = @destination.failure_notification_channel
           @raw_destination = @raw_destination.to_s
           @cull = !!cull
+        end
+
+        def valid
+          @destination.valid
         end
 
         def to_s
