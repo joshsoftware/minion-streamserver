@@ -5,20 +5,27 @@ module Minion
         getter handle : Fiber
         getter channel
         getter io : IO
-        getter failure_notification_channel : Channel(Bool)
 
         NEWLINE = "\n".to_slice
 
-        def initialize(destination : String, @options : Array(String) | Array(Hash(String, Bool | Float32 | Float64 | Int32 | Int64 | Slice(UInt8) | String | Time | Nil)), @failure_notification_channel : Channel(Bool))
+        def initialize(
+          destination : String,
+          @options : Array(String) | Array(ConfigDataHash),
+          @failure_notification_channel : Channel(Bool),
+          start_monitor_thread = true
+        )
           @channel = Channel(Frame).new(1024)
           @io = case destination
                 when /stdout/i
                   STDOUT
                 when /stderr/i
                   STDERR
-                else
+                else # Should this handle other destinations? What's the differnce between this and File?
                   raise "Unknown IO: #{destination}"
                 end
+
+          spawn monitor_io if start_monitor_thread
+
           @handle = spawn do
             begin
               loop do
@@ -27,9 +34,23 @@ module Minion
                 @io.write NEWLINE unless frame.data.last[-1] == '\n'
               end
             rescue e : Exception
+              notify_upstream_of_destination_failure
               STDERR.puts e
               STDERR.puts e.backtrace.join("\n")
             end
+          end
+        end
+
+        def monitor_io
+          loop do # Write nils to the IO. If they succeed, yay. If they fail, something is wrong.
+            begin
+              if !io.closed?
+                notify_upstream_of_destination_success
+              else
+                notify_upstream_of_destination_failure
+              end
+            end
+            sleep 5
           end
         end
 

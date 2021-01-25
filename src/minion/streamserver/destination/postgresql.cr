@@ -10,15 +10,14 @@ module Minion
         getter handles : Array(Fiber)
         getter channel
         getter destination
-        getter failure_notification_channel : Channel(Bool)
 
-        @options : Hash(String, Bool | Float32 | Float64 | Int32 | Int64 | Slice(UInt8) | String | Time | Nil)
+        @options : ConfigDataHash
 
         def initialize(
           @destination : String,
-          options : Array(String) | Array(Hash(String, Bool | Float32 | Float64 | Int32 | Int64 | Slice(UInt8) | String | Time | Nil)),
+          options : Array(String) | Array(ConfigDataHash),
           @failure_notification_channel : Channel(Bool)
-          )
+        )
           @options = parse_options(options)
           set_option_defaults
 
@@ -52,7 +51,7 @@ module Minion
               ConnectionManager.open(@destination).transaction do |tx|
                 insert_count = 0
                 cnn = tx.connection
-                batch = Array(Bool | Float32 | Float64 | Int32 | Int64 | Slice(UInt8) | String | Time | Nil).new(initial_capacity: @options["batch_size"].as(Int32))
+                batch = Array(GenericData).new(initial_capacity: @options["batch_size"].as(Int32))
                 batch_size = @options["batch_size"].as(Int32)
 
                 queues.each do |table, queue|
@@ -92,7 +91,7 @@ module Minion
         # The option parser iterates the array, and composes a new hash containing the
         # keys and values of all of the hashes passed in the options array.
         def parse_options(options)
-          r = {} of String => Bool | Float32 | Float64 | Int32 | Int64 | Slice(UInt8) | String | Time | Nil
+          r = {} of String => GenericData
           options.each do |o|
             if o.is_a?(Hash)
               o.each do |k, v|

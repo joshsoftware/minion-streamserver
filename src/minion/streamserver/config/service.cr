@@ -24,7 +24,7 @@ module Minion
         property type : String?
 
         @[YAML::Field(key: "options", default: ["ab"])]
-        property options : Array(String) | Array(Hash(String, Bool | Float32 | Float64 | Int32 | Int64 | Slice(UInt8) | String | Time | Nil)) = ["ab"]
+        property options : Array(String) | Array(ConfigDataHash) = ["ab"]
 
         @[YAML::Field(key: "default")]
         property default : Bool = false

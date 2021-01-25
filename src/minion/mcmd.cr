@@ -417,11 +417,11 @@ module Minion
       data = [] of {String, String, String, String, Time?}
       arg_n = 0
       where_clauses = [
-        "WHERE server_id IN(#{servers.map {|s| arg_n += 1; "$#{arg_n}" }.join(",")})",
-        where_by_date("created_at")
+        "WHERE server_id IN(#{servers.map { |s| arg_n += 1; "$#{arg_n}" }.join(",")})",
+        where_by_date("created_at"),
       ]
 
-      where_args = [] of String|Array(String)
+      where_args = [] of String | Array(String)
       where_args += servers
 
       sqls, args = where_by_tsquery("tsv")
@@ -714,7 +714,7 @@ module Minion
         args << arg[1]
       end
 
-      { sqls.size > 0 ? sqls : nil, args.size > 0 ? args : nil }
+      {sqls.size > 0 ? sqls : nil, args.size > 0 ? args : nil}
     end
 
     def date_between(field, args)
@@ -789,24 +789,23 @@ module Minion
     end
 
     def to_csv(data, *header)
-      to_csv_impl(data, header) {|datum| datum.map(&.to_s)}
+      to_csv_impl(data, header) { |datum| datum.map(&.to_s) }
     end
 
-    def to_csv(data, *header, &formatter : Array(String|Array(String)|Time?) -> Array(String|Array(String)?|Time?))
+    def to_csv(data, *header, &formatter : Array(String | Array(String) | Time?) -> Array(String | Array(String)? | Time?))
       to_csv_impl(data, header, &formatter)
     end
 
     def to_csv_impl(data, header)
       puts(
         CSV.build do |csv|
-        csv.row *header
-        
-        data.map(&.to_a).each do |datum|
-          csv.row yield(datum)
-        end
-      end)
-    end
+          csv.row *header
 
+          data.map(&.to_a).each do |datum|
+            csv.row yield(datum)
+          end
+        end)
+    end
   end
 end
 

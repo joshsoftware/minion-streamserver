@@ -8,8 +8,9 @@ module Minion
         getter destination : Minion::StreamServer::Destination?
         getter cull : Bool?
         getter type : String?
-        getter options : Array(String) | Array(Hash(String, Bool | Float32 | Float64 | Int32 | Int64 | Slice(UInt8) | String | Time | Nil))
+        getter options : Array(String) | Array(ConfigDataHash)
         getter default : Bool
+        getter failure_notification_channel : Channel(Bool)
 
         DEFAULT_SERVICE = "default"
         DEFAULT_TYPE    = "file"
@@ -24,7 +25,11 @@ module Minion
           @options = DEFAULT_OPTIONS,
           @default = false
         )
-          @failure_notification_channel = @destination.failure_notification_channel
+          # This shouldn't be nillable. The compiler insists that it is. So,
+          # let's use not_nil! and see if anything throws an error that can
+          # shed some light on where the nil could be coming from, because right
+          # now I am not seeing it.
+          @failure_notification_channel = @destination.not_nil!.failure_notification_channel
           @raw_destination = @raw_destination.to_s
           @cull = !!cull
         end

@@ -8,35 +8,20 @@ require "./connection_registry"
 require "./connection_manager"
 require "./command/processor_registry"
 require "./command/listener_registry"
-
-struct Number
-  def positive?
-    self > 0
-  end
-end
+require "./types"
 
 module Minion
   class StreamServer
     class Core
+      include Minion::Util
+
       @@prng = Random::ISAAC.new
 
       property config : Config
       property invocation_arguments : ExecArguments
       property key : String
       class_property default_log : String = "STDOUT"
-      class_property default_log_destination : Minion::StreamServer::Destination | Nil
-
-      class NoPortProvided < RuntimeError
-        def initialize
-          @message = "The port to bind to was not provided."
-        end
-      end
-
-      class BadPort < RuntimeError
-        def initialize(port : String | Int32 | Nil)
-          @message = "The port provided (#{port}) is invalid."
-        end
-      end
+      class_property default_log_destination : Minion::StreamServer::Destination = setup_destination(destination: "STDERR", type: "Io")
 
       EXIT_SIGNALS    = [Signal::INT, Signal::TERM]
       RELOAD_SIGNALS  = [Signal::HUP]
@@ -53,7 +38,7 @@ module Minion
         @rcount = 0
         @wcount = 0
         @registered_agents = {} of String => Protocol
-        @registered_agents_by_group = Hash(Group, Array(Protocol)).new { |h,k| h[k] = Array(Protocol).new}
+        @registered_agents_by_group = Hash(Group, Array(Protocol)).new { |h, k| h[k] = Array(Protocol).new }
         @now = Time.local
       end
 
@@ -79,12 +64,7 @@ module Minion
 
       def setup_database_monitor
         spawn do
-
         end
-      end
-
-      def string_from_string_or_array(val)
-        val.is_a?(Array) ? val.as(Array).join : val.as(String)
       end
 
       def handle(client)
@@ -303,27 +283,6 @@ module Minion
       end
 
       ##########
-      def setup_signal_traps
-        safe_trap(signal_list: EXIT_SIGNALS) { handle_pending_and_exit }
-        safe_trap(signal_list: RELOAD_SIGNALS) {
-          # TODO: make HUP work again; cleanup_and_reopen
-        }
-        safe_trap(signal_list: RESTART_SIGNALS) do
-          purge_queues
-          Process.exec(
-            command: invocation_arguments.command,
-            args: invocation_arguments.args
-          )
-        end
-      end
-
-      def safe_trap(signal_list : Array(Signal), &operation)
-        signal_list.each do |sig|
-          sig.trap { operation.call }
-        end
-      end
-
-      ##########
       def handle_daemonize
         daemonize if @config.daemonize
         File.open(@config.pidfile.to_s, "w+") { |fh| fh.puts Process.pid } if @config.pidfile
@@ -358,7 +317,6 @@ module Minion
 
           spawn handle_group_failure(@groups[group.id])
         end
-
       end
 
       def handle_group_failure(group)
@@ -408,7 +366,7 @@ module Minion
               new_service = Service.new(
                 service: label,
                 raw_destination: destination_or_default,
-                destination: setup_destination(
+                destination: Minion::StreamServer::Core.setup_destination(
                   destination: destination_or_default,
                   type: type_or_default,
                   options: options_or_default,
@@ -427,7 +385,7 @@ module Minion
             new_service = Service.new(
               service: service_string,
               raw_destination: destination_or_default,
-              destination: setup_destination(
+              destination: Minion::StreamServer::Core.setup_destination(
                 destination: destination_or_default,
                 type: type_or_default,
                 options: options_or_default,
@@ -468,7 +426,7 @@ module Minion
           group_telemetry << Telemetry.new(
             type: type_or_default,
             options: options_or_default,
-            destination: setup_destination(
+            destination: Minion::StreamServer::Core.setup_destination(
               destination: destination_or_default,
               type: type_or_default,
               options: options_or_default,
@@ -486,7 +444,7 @@ module Minion
           group_responses << Response.new(
             type: response.type,
             options: response.options,
-            destination: setup_destination(
+            destination: Minion::StreamServer::Core.setup_destination(
               destination: response.destination,
               type: response.type,
               options: response.options,
@@ -545,69 +503,6 @@ module Minion
             )
           end
         end
-      end
-
-      def setup_destination(destination : Minion::StreamServer::Destination)
-        destination.reopen if destination.respond_to? :reopen
-      end
-
-      def setup_destination(
-        destination : String, type : String? = "file",
-        options : Array(String) | Array(Hash(String, Bool | Float32 | Float64 | Int32 | Int64 | Slice(UInt8) | String | Time | Nil))? = ["ab"],
-        failure_notification_channel = Channel(Bool).new)
-        type ||= "file"
-        type = type.to_s.downcase
-
-        obj = Minion::StreamServer::DestinationRegistry.get(type)
-        obj.new(destination, options, failure_notification_channel)
-      rescue e : Exception
-        STDERR.puts e
-        STDERR.puts e.backtrace.join("\n")
-        raise e
-      end
-
-      def setup_processor(
-        type : String,
-        agent_registry : Hash(String, Protocol),
-        destination : String?
-      )
-        type = type.to_s.downcase
-
-        obj = Minion::StreamServer::Command::ProcessorRegistry.get(type)
-        obj.new(
-          destination: destination,
-          agent_registry: agent_registry
-        )
-      rescue ex
-        STDERR.puts ex
-        STDERR.puts ex.backtrace.join("\n")
-        raise ex
-      end
-
-      def setup_listener(
-        type : String,
-        channel : String,
-        destination : String?,
-        processor : Minion::StreamServer::Command::Processor
-      )
-        type = type.to_s.downcase
-
-        obj = Minion::StreamServer::Command::ListenerRegistry.get(type)
-        obj.new(
-          destination: destination,
-          channel: channel,
-          processor: processor
-        )
-      end
-
-      ##########
-      def set_config_defaults
-        @config.host ||= "127.0.0.1"
-
-        # @config.interval = @config.interval.nil? ? 1 : @config.interval.to_i
-        @config.syncinterval = @config.syncinterval.nil? ? 60 : @config.syncinterval.to_i
-        Minion::StreamServer::Core.default_log = @config.default_log.to_s.blank? ? "STDOUT" : @config.default_log.to_s
-        Minion::StreamServer::Core.default_log_destination = setup_destination(destination: "STDERR", type: "Io")
       end
 
       ##########

@@ -9,7 +9,8 @@ module Minion
         getter telemetry
         getter command
         getter default_log
-        getter valid
+        property valid
+        getter failure_notification_channel : Channel(Bool)
 
         def initialize(
           @id : String,
@@ -18,9 +19,9 @@ module Minion
           @default_log : Minion::StreamServer::Core::Service | String = "",
           @telemetry : Array(Telemetry) = [] of Telemetry,
           @command : Array(Command)? = [] of Command,
-          @valid : Bool = true
-        )
+          @valid : Bool = true,
           @failure_notification_channel = Channel(Bool).new
+        )
         end
 
         def to_s

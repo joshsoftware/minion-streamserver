@@ -1,4 +1,5 @@
 require "yaml"
+require "./types"
 require "./config/*"
 
 # port: 47990

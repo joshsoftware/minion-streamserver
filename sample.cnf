@@ -1,0 +1,46 @@
+---
+service_defaults:
+  service: stderr
+  type: io
+  destination: STDERR
+  cull: true
+port: 47990
+host: 0.0.0.0
+default_log: log/default.log
+daemonize: false
+syncinterval: 1
+pidfile: log/streamserver.pid
+command:
+  - listener: postgresql
+    destination: ENV["MINION_PG_URL"]
+    channel: agent_commands
+    processor: postgresql
+groups:
+  - id: "kirks-minion-stuff"
+    key: "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    service_defaults:
+      service: default
+      type: postgresql
+      destination: ENV["MINION_PG_URL"]
+      options: []
+    services:
+      - service: pg
+        options:
+          - batch_size: 2000
+          - inserts_per_transaction: 100
+          - channel_depth: 100000
+          - queue_process_wait: 0.1
+        default: true
+      - service: null
+        destination: /dev/null
+        type: file
+        cull: false
+      - service: stderr
+        destination: STDERR
+        type: io
+        cull: true
+    telemetry:
+      - label: telemetry 
+    responses:
+      - destination: STDERR
+        type: io

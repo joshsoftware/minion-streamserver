@@ -12,7 +12,7 @@ module Minion
 
         def initialize(
           @type : String = DEFAULT_TYPE,
-          @options : Array(String) | Array(Hash(String, Bool | Float32 | Float64 | Int32 | Int64 | Slice(UInt8) | String | Time | Nil)) = DEFAULT_OPTIONS,
+          @options : Array(String) | Array(ConfigDataHash) = DEFAULT_OPTIONS,
           @destination = Minion::StreamServer::Core.default_log_destination
         )
         end
