@@ -79,11 +79,11 @@ groups:
 
 ## Building The Software
 
-The Minion server and the CLI tool (MCMD) for Minion are written with the [https://crystal-lang.org/](Crystal Language.
+The Minion server and the CLI tool (MCMD) for Minion are written with the [Crystal Language](https://crystal-lang.org/).
 
 To build the software, Crystal must be installed in order for the software to be compiled.
 
-Full instructions for a wide variety of platforms are available on [https://crystal-lang.org/install/](the Crystal web site). A couple of the more common scenarios are summarized below:
+Full instructions for a wide variety of platforms are available on [the Crystal web site](https://crystal-lang.org/install/). A couple of the more common scenarios are summarized below:
 
 ### Mac OS
 
